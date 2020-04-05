@@ -32,12 +32,15 @@ if not args.verbose or args.verbose > 4:
 else:
   log_levels = [logging.NOTSET, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
   log_level = log_levels[args.verbose]
+logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 
 if (args.source == 'garmin'):
-  importer = GarminImporter(log_level, args.garminuser, args.garminpwd)
+  importer = GarminImporter(args.garminuser, args.garminpwd)
 else:  
   print("Importers others than Garmin are not yet implemented")
   exit
+
+# TODO handle exceptions !!!!!!!!!!!!111
 
 importer.create_session()
 importer.import_workouts()
