@@ -7,7 +7,7 @@ import re
 import json
 import logging
 
-from workout_importer import WorkoutImporter
+from lib.workout_importer import WorkoutImporter
 
 GARMIN_SSO_URL       = "https://sso.garmin.com"
 GARMIN_SSO_LOGIN_URL = "https://sso.garmin.com/sso/signin"

@@ -10,8 +10,8 @@ Project motivation: Introduce myself into Python
 import logging
 import argparse
 
-from garmin_importer import GarminImporter
-from workoutsdb import WorkoutsDB
+from lib.garmin_importer import GarminImporter
+from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", "--verbose", action='count', help="increase verbosity, from -v (ERROR) over -vv (WARNING), -vvv (INFO) to -vvvv (DEBUG)")
@@ -33,12 +33,41 @@ else:
 logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 
 # database
-workoutsDB = WorkoutsDB(args.database)
-workouts = []
-workouts.append({'id': 2, 'source': 'garmin', 'name': 'laufen', 'date': '2020-04-02sfsdfsd'})
-workouts.append({'id': 3, 'source': 'csv', 'name': 'radfahren', 'date': '2020-04-03'})
-workoutsDB.insert_workouts(workouts)
-workoutsDB.close()
+db = WorkoutsDatabase(args.database)
+
+sport = Sport()
+sport.name = 'Yoga'
+db.add_if_not_exists(sport)
+sport = Sport()
+sport.name = 'Running'
+db.add_if_not_exists(sport)
+sport = Sport()
+sport.name = 'Bike'
+db.add_if_not_exists(sport)
+
+sportstype = SportsType()
+sportstype.name = 'Race Bike'
+db.add_if_not_exists(sportstype)
+sportstype = SportsType()
+sportstype.name = 'MTB'
+db.add_if_not_exists(sportstype)
+sportstype = SportsType()
+sportstype.name = 'Cross Running'
+db.add_if_not_exists(sportstype)
+sportstype = SportsType()
+sportstype.name = 'Street Running'
+db.add_if_not_exists(sportstype)
+sportstype = SportsType()
+sportstype.name = 'Yoga'
+db.add_if_not_exists(sportstype)
+
+'''
+workout = Workout()
+workout.source = 'Test'
+workout.sports_id = db.session.query(Sport.id).filter(Sport.name == sport.name).first()
+workout.sportstype_id = db.session.query(SportsType.id).filter(SportsType.name == sportstype.name).first()
+db.session.add(workout)
+'''
 
 if (args.action == "show"):
   pass
@@ -58,8 +87,10 @@ elif (args.action == "import"):
 
   # TODO handle exceptions !!!!!!!!!!!!
 
-  importer.create_session()
-  importer.import_workouts()
-  importer.close_session()
+  #importer.create_session()
+  #importer.import_workouts()
+  #importer.close_session()
 elif (args.action == "check"):
   pass
+
+db.close()

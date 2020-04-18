@@ -1,31 +1,90 @@
-import sqlite3
-import logging
+# coding=utf-8
 
-class WorkoutsDB:
-  def __init__(self, database):
-    logging.info("connecting to {}".format(database))
-    self.db = sqlite3.connect(database)
-    self.cursor = self.db.cursor()
-    self.cursor.execute("""CREATE TABLE IF NOT EXISTS WORKOUTS (
-      [id] INTEGER PRIMARY KEY, 
-      [source] text, 
-      [name] text, 
-      [date] date)
-      """)
-    self.db.commit()
+import logging
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, String, Integer, Date, DateTime
+from sqlalchemy import ForeignKey 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+Base = declarative_base()
+
+class Sport(Base):
+  __tablename__ = 'sports'
+  id          = Column(Integer, primary_key = True)
+  name        = Column(String)
+  sportstypes = relationship('SportsType')
+  workouts    = relationship('Workout') 
+
+class SportsType(Base):
+  __tablename__ = 'sportstypes'
+  id        = Column(Integer, primary_key = True)
+  name      = Column(String)
+  sport_id  = Column(Integer, ForeignKey('sports.id'))
+  workouts  = relationship("Workout")
+
+
+class Workout(Base):
+  __tablename__ = 'workouts'
+  
+  id            = Column(Integer, primary_key = True)
+  source        = Column(String(32))
+  source_ref    = Column(Integer) 
+  sportstype_id = Column(Integer, ForeignKey('sportstypes.id'))
+  sport_id      = Column(Integer, ForeignKey('sports.id'))
+  name          = Column(String) 
+  date          = Column(Date)
+
+  def __repr__(self):
+    return "{} '{}' from {}".format(self.sportstype, self.name, self.startdatetime)
 
   def close(self):
-    self.cursor.close()
+    pass
 
-  def insert_workouts(self, workouts):
-    for workout in workouts:
-      columns = ', '.join("`" + str(x).replace('/', '_') + "`" for x in workout.keys())
-      values  = ', '.join("'" + str(x).replace('/', '_') + "'" for x in workout.values())
-      sql = "INSERT INTO WORKOUTS ( %s ) VALUES ( %s );" % (columns, values)
-      logging.info("SQL: {}".format(sql))
-      self.cursor.execute(sql)
-    self.db.commit()
 
+class WorkoutsDatabase:
+  def __init__(self, database):
+    engine = create_engine('sqlite:///{}'.format(database), echo=False)
+    logging.info("connecting to {}".format(database))
+    Session = sessionmaker(bind = engine)
+    Base.metadata.create_all(engine)
+    self.session = Session()
+
+  def close(self):
+    self.session.commit()
+    self.session.close()  
+  
+  def add_if_not_exists(self, object):
+    if isinstance(object, Sport):
+      if not self.session.query(Sport.id).filter(Sport.name == object.name).first():
+        logging.info("Adding new sport '{}'".format(object.name))
+        self.session.add(object)
+        return True
+      return False
+    elif isinstance(object, SportsType):
+      if not self.session.query(SportsType.id).filter(SportsType.name == object.name).first():
+        sport = Sport()
+        if object.name in ['Race Bike', 'MTB', 'Trekking Bike']:
+          sport.name = "Bike"
+        elif object.name in ['Cross Running', 'Street Running']:
+          sport.name = "Running"
+        else: 
+          sport.name = object.name
+        self.add_if_not_exists(sport)
+        object.sport_id = self.session.query(Sport.id).filter(Sport.name == sport.name).first()[0]
+        logging.info("Adding new sportstype '{}' for sport '{}' (id {})".format(object.name, sport.name, object.sport_id))
+        self.session.add(object)
+        return True
+      return False
+    elif isinstance(object, Workout):
+      if not self.session.query(Workout.id).filter(Workout.name == object.name).first():
+        logging.info("Adding new workout '{}'".format(object.name))
+        self.session.add(object)
+        return True
+      return False
+    else:
+      return False
 
 
 
