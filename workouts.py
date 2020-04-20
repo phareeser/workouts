@@ -35,40 +35,37 @@ logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 # database
 db = WorkoutsDatabase(args.database)
 
-sport = Sport()
-sport.name = 'Yoga'
-db.add_if_not_exists(sport)
-sport = Sport()
-sport.name = 'Running'
-db.add_if_not_exists(sport)
-sport = Sport()
-sport.name = 'Bike'
-db.add_if_not_exists(sport)
+sport = Sport(name = 'Yoga')
+sport.add(db)
+sport = Sport(name = 'Running')
+sport.add(db)
+sport = Sport(name = 'Inline Hockey')
+sport.add(db)
+sport = Sport(name = 'Bike')
+sport.add(db)
 
-sportstype = SportsType()
-sportstype.name = 'Race Bike'
-db.add_if_not_exists(sportstype)
-sportstype = SportsType()
-sportstype.name = 'MTB'
-db.add_if_not_exists(sportstype)
-sportstype = SportsType()
-sportstype.name = 'Cross Running'
-db.add_if_not_exists(sportstype)
-sportstype = SportsType()
-sportstype.name = 'Street Running'
-db.add_if_not_exists(sportstype)
-sportstype = SportsType()
-sportstype.name = 'Yoga'
-db.add_if_not_exists(sportstype)
-
+sportstype = SportsType(name = 'Race Bike')
+sportstype.add(db)
+sportstype = SportsType(name = 'MTB')
+sportstype.add(db)
+sportstype = SportsType(name = 'Trail Running')
+sportstype.add(db)
+sportstype = SportsType(name = 'Strength')
+sportstype.add(db)
+sportstype = SportsType(name = 'Street Running')
+sportstype.add(db)
+sportstype = SportsType(name = 'Yoga')
+sportstype.add(db)
 '''
+
 workout = Workout()
-workout.source = 'Test'
-workout.sports_id = db.session.query(Sport.id).filter(Sport.name == sport.name).first()
-workout.sportstype_id = db.session.query(SportsType.id).filter(SportsType.name == sportstype.name).first()
-db.session.add(workout)
+workout.source        = 'Test'
+workout.source_ref    = 1
+workout.sportstype_id = Sportstype.set('Race Bike')
+workout.sport_id      = Sport.set('Bike')
+workout.name          = 'Zwift'
+workout.date          = '2020-04-17'
 '''
-
 if (args.action == "show"):
   pass
 elif (args.action == "import"):

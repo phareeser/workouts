@@ -17,6 +17,17 @@ class Sport(Base):
   sportstypes = relationship('SportsType')
   workouts    = relationship('Workout') 
 
+  def add(self, database):
+    id = database.session.query(Sport.id).filter(Sport.name == self.name).first()
+    if id:
+      id = id[0]
+    else:
+      logging.info("Adding new sport '{}'".format(self.name))
+      database.session.add(self)
+      id = self.id
+    return id
+
+
 class SportsType(Base):
   __tablename__ = 'sportstypes'
   id        = Column(Integer, primary_key = True)
@@ -24,6 +35,27 @@ class SportsType(Base):
   sport_id  = Column(Integer, ForeignKey('sports.id'))
   workouts  = relationship("Workout")
 
+  def associate_sport(self):
+    sport = Sport()
+    if self.name in ['Race Bike', 'MTB', 'Trekking Bike']:
+      sport.name = "Bike"
+    elif self.name in ['Trail Running', 'Street Running']:
+      sport.name = "Running"
+    else: 
+      sport.name = self.name
+    return sport    
+ 
+  def add(self, database):
+    id = database.session.query(SportsType.id).filter(SportsType.name == self.name).first()
+    if id:
+      id = id[0]
+    else:
+      logging.info("Adding new sportstype '{}'".format(self.name))
+      sport = self.associate_sport()
+      self.sport_id = sport.add(database)
+      database.session.add(self)
+      id = self.id
+    return id
 
 class Workout(Base):
   __tablename__ = 'workouts'
@@ -42,6 +74,16 @@ class Workout(Base):
   def close(self):
     pass
 
+  def add(self, database):
+    id = database.session.query(Workout.id).filter(Workout.name == self.name).first()
+    if id:
+      id = id[0]
+    else:
+      logging.info("Adding new workout '{}'".format(self.name))
+      database.session.add(self)
+      id = self.id
+    return id
+
 
 class WorkoutsDatabase:
   def __init__(self, database):
@@ -55,37 +97,6 @@ class WorkoutsDatabase:
     self.session.commit()
     self.session.close()  
   
-  def add_if_not_exists(self, object):
-    if isinstance(object, Sport):
-      if not self.session.query(Sport.id).filter(Sport.name == object.name).first():
-        logging.info("Adding new sport '{}'".format(object.name))
-        self.session.add(object)
-        return True
-      return False
-    elif isinstance(object, SportsType):
-      if not self.session.query(SportsType.id).filter(SportsType.name == object.name).first():
-        sport = Sport()
-        if object.name in ['Race Bike', 'MTB', 'Trekking Bike']:
-          sport.name = "Bike"
-        elif object.name in ['Cross Running', 'Street Running']:
-          sport.name = "Running"
-        else: 
-          sport.name = object.name
-        self.add_if_not_exists(sport)
-        object.sport_id = self.session.query(Sport.id).filter(Sport.name == sport.name).first()[0]
-        logging.info("Adding new sportstype '{}' for sport '{}' (id {})".format(object.name, sport.name, object.sport_id))
-        self.session.add(object)
-        return True
-      return False
-    elif isinstance(object, Workout):
-      if not self.session.query(Workout.id).filter(Workout.name == object.name).first():
-        logging.info("Adding new workout '{}'".format(object.name))
-        self.session.add(object)
-        return True
-      return False
-    else:
-      return False
-
 
 
 
