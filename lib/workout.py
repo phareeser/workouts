@@ -24,8 +24,20 @@ class Sport(Base):
     else:
       logging.info("Adding new sport '{}'".format(self.name))
       database.session.add(self)
+      database.session.flush()
       id = self.id
     return id
+
+  def get(database, name):
+    result = database.session.query(Sport).filter(Sport.name == name).all()
+    if result:
+      return result[0]
+    else:
+      return None
+
+  def __repr__(self):
+    return "({}) {}".format(self.id, self.name)
+
 
 
 class SportsType(Base):
@@ -50,12 +62,24 @@ class SportsType(Base):
     if id:
       id = id[0]
     else:
-      logging.info("Adding new sportstype '{}'".format(self.name))
       sport = self.associate_sport()
       self.sport_id = sport.add(database)
+      logging.info("Adding new sportstype '{}'".format(self.name))
       database.session.add(self)
+      database.session.flush()
       id = self.id
     return id
+
+  def get(database, name):
+    result = database.session.query(SportsType).filter(SportsType.name == name).all()
+    if result:
+      return result[0]
+    else:
+      return None
+
+  def __repr__(self):
+    return "({}) {} belongs to {}".format(self.id, self.name, self.sport_id)
+
 
 class Workout(Base):
   __tablename__ = 'workouts'
@@ -69,7 +93,7 @@ class Workout(Base):
   date          = Column(Date)
 
   def __repr__(self):
-    return "{} '{}' from {}".format(self.sportstype, self.name, self.startdatetime)
+    return "({}) {} from {} doing {} ({}) imported by {}".format(self.id, self.name, self.date, self.sportstype_id, self.sport_id, self.source)
 
   def close(self):
     pass
@@ -81,6 +105,7 @@ class Workout(Base):
     else:
       logging.info("Adding new workout '{}'".format(self.name))
       database.session.add(self)
+      database.session.flush()
       id = self.id
     return id
 
@@ -97,7 +122,19 @@ class WorkoutsDatabase:
     self.session.commit()
     self.session.close()  
   
-
+  def showall(self):
+    print("SPORTS:")
+    sports = self.session.query(Sport).all()
+    for sport in sports:
+      print(sport)
+    print("SPORTSTYPES:")
+    sportstypes = self.session.query(SportsType).all()
+    for sportstype in sportstypes:
+      print(sportstype)
+    print("WORKOUTS:")
+    workouts = self.session.query(Workout).all()
+    for workout in workouts:
+      print(workout)
 
 
 
