@@ -11,6 +11,7 @@ import logging
 import argparse
 
 from lib.garmin_importer import GarminImporter
+from lib.json_importer import JsonImporter
 from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase 
 
 parser = argparse.ArgumentParser()
@@ -35,6 +36,7 @@ logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 # database
 db = WorkoutsDatabase(args.database)
 
+'''
 sport = Sport(name = 'Yoga')
 sport.add(db)
 sport = Sport(name = 'Running')
@@ -88,7 +90,7 @@ if not sport:
 workout.sport_id      = sport.id
 workout.name          = 'Zwift im Keller'
 workout.add(db)
-
+'''
 
 if (args.action == "show"):
   db.showall()
@@ -102,16 +104,13 @@ elif (args.action == "import"):
     print("csv importer not yet implemented")
     exit
   elif (args.source == 'json'):  
-    print("json importer not yet implemented")
-    exit
+    importer = JsonImporter(args.filename)
   else:
     print("importer {} not implemented".format(args.source))
     exit
-
+  importer.create_session()
+  importer.import_workouts(db)
+  importer.close_session()
   # TODO handle exceptions !!!!!!!!!!!!
-
-  #importer.create_session()
-  #importer.import_workouts()
-  #importer.close_session()
 
 db.close()

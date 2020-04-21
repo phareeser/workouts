@@ -28,7 +28,8 @@ class Sport(Base):
       id = self.id
     return id
 
-  def get(self, database, name):
+  @classmethod
+  def get(cls, database, name):
     result = database.session.query(Sport).filter(Sport.name == name).all()
     if result:
       return result[0]
@@ -70,7 +71,8 @@ class SportsType(Base):
       id = self.id
     return id
 
-  def get(self, database, name):
+  @classmethod
+  def get(cls, database, name):
     result = database.session.query(SportsType).filter(SportsType.name == name).all()
     if result:
       return result[0]
@@ -94,16 +96,16 @@ class Workout(Base):
   # description
   name                                  = Column(String) 
   description                           = Column(String)
-  min_temperature                       = Column(Numeric, precision=4, scale=1)
-  max_temperature                       = Column(Numeric, precision=4, scale=1)
+  min_temperature                       = Column(Numeric(4, 1))
+  max_temperature                       = Column(Numeric(4, 1))
   # time
   start_time                            = Column(DateTime)
   duration_sec                          = Column(Integer)
   moving_duration_sec                   = Column(Integer)
   # key performance indicators
   distance_m                            = Column(Integer)
-  average_speed_m_per_sec               = Column(Numeric, precision=7, scale=2)
-  max_speed_m_per_sec                   = Column(Numeric, precision=7, scale=2)
+  average_speed_m_per_sec               = Column(Numeric(7, 2))
+  max_speed_m_per_sec                   = Column(Numeric(7, 2))
   elevation_gain_m                      = Column(Integer)
   elevation_loss_m                      = Column(Integer)
   calories                              = Column(Integer)
@@ -113,8 +115,8 @@ class Workout(Base):
   max_power                             = Column(Integer)
   norm_power                            = Column(Integer)
   # training effect
-  aerobic_training_effect               = Column(Numeric, precision=4, scale=1)
-  anaerobic_training_effect             = Column(Numeric, precision=4, scale=1)
+  aerobic_training_effect               = Column(Numeric(4, 1))
+  anaerobic_training_effect             = Column(Numeric(4, 1))
   training_stress_score                 = Column(Integer)
   intensity_factor                      = Column(Integer)
   # cadences
@@ -136,10 +138,10 @@ class Workout(Base):
   avg_strokes                           = Column(Integer)
   min_strokes                           = Column(Integer)
   # running specific
-  left_balance                          = Column(Numeric, precision=5, scale=2)
-  right_balance                         = Column(Numeric, precision=5, scale=2)
-  avg_left_balance                      = Column(Numeric, precision=5, scale=2)
-  avg_vertical_oscillation              = Column(Numeric, precision=5, scale=2)
+  left_balance                          = Column(Numeric(5, 2))
+  right_balance                         = Column(Numeric(5, 2))
+  avg_left_balance                      = Column(Numeric(5, 2))
+  avg_vertical_oscillation              = Column(Numeric(5, 2))
   avg_ground_contact_time               = Column(Integer)
   avg_stride_length                     = Column(Integer)
   avg_fractional_cadence                = Column(Integer)

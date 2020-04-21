@@ -84,7 +84,7 @@ class GarminImporter(WorkoutImporter):
       self.session = None
     logging.info("session closed")
   
-  def import_workouts(self):
+  def import_workouts(self, db):
     logging.info("fetching workouts ...")
     params = {
       "start": 0,
