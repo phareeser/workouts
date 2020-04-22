@@ -88,7 +88,7 @@ class GarminImporter(WorkoutImporter):
     logging.info("fetching workouts ...")
     params = {
       "start": 0,
-      "limit": 20 }
+      "limit": 200 }
     response = self.session.get(GARMIN_ACTIVITIES_SEARCH, params=params)
     if response.status_code != 200:
       raise ValueError("error reading workouts")

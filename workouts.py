@@ -9,6 +9,7 @@ Project motivation: Introduce myself into Python
 
 import logging
 import argparse
+from datetime import date
 
 from lib.garmin_importer import GarminImporter
 from lib.json_importer import JsonImporter
@@ -33,68 +34,12 @@ else:
   log_level = log_levels[args.verbose]
 logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 
-# database
 db = WorkoutsDatabase(args.database)
-
-'''
-sport = Sport(name = 'Yoga')
-sport.add(db)
-sport = Sport(name = 'Running')
-sport.add(db)
-sport = Sport(name = 'Inline Hockey')
-sport.add(db)
-sport = Sport(name = 'Bike')
-sport.add(db)
-
-sportstype = SportsType(name = 'Race Bike')
-sportstype.add(db)
-sportstype = SportsType(name = 'MTB')
-sportstype.add(db)
-sportstype = SportsType(name = 'Trail Running')
-sportstype.add(db)
-sportstype = SportsType(name = 'Strength')
-sportstype.add(db)
-sportstype = SportsType(name = 'Street Running')
-sportstype.add(db)
-sportstype = SportsType(name = 'Yoga')
-sportstype.add(db)
-
-workout = Workout()
-workout.source        = 'Test'
-workout.source_ref    = 1
-sportstype = SportsType.get(db, "Race Bike")
-if not sportstype:
-  sportstype = SportsType(name = 'Race Bike')
-  sportstype.add(db)
-workout.sportstype_id = sportstype.id
-sport = Sport.get(db, "Bike")
-if not sport:
-  sport = Sport(name = 'Bike')
-  sport.add(db)
-workout.sport_id      = sport.id
-workout.name          = 'Zwift'
-workout.add(db)
-
-workout = Workout()
-workout.source        = 'Test'
-workout.source_ref    = 2
-sportstype = SportsType.get(db, "Hantelbank")
-if not sportstype:
-  sportstype = SportsType(name = 'Hantelbank')
-  sportstype.add(db)
-workout.sportstype_id = sportstype.id
-sport = Sport.get(db, "Kellersport")
-if not sport:
-  sport = Sport(name = 'Kellersport')
-  sport.add(db)
-workout.sport_id      = sport.id
-workout.name          = 'Zwift im Keller'
-workout.add(db)
-'''
 
 if (args.action == "show"):
   db.showall()
 elif (args.action == "check"):
+  # TODO
   pass
 elif (args.action == "import"):
   # import from source

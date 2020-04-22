@@ -177,7 +177,10 @@ class Workout(Base):
     pass
 
   def add(self, database):
-    id = database.session.query(Workout.id).filter(Workout.name == self.name).first()
+    id = database.session.query(Workout.id) \
+      .filter(Workout.external_id == self.external_id) \
+      .filter(Workout.source == self.source) \
+      .first()
     if id:
       id = id[0]
     else:
