@@ -3,7 +3,7 @@
 import logging
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, Integer, Numeric, DateTime
+from sqlalchemy import Column, String, Integer, DateTime, Float
 from sqlalchemy import ForeignKey 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -49,25 +49,78 @@ class SportsType(Base):
   workouts  = relationship("Workout")
 
   def associate_sport(self):
-    sport = Sport()
-    if self.name in ['Race Bike', 'MTB', 'Trekking Bike']:
-      sport.name = "Bike"
-    elif self.name in ['Trail Running', 'Street Running']:
-      sport.name = "Running"
+    name = None
+    if self.name in ['indoor_cycling', 'indoor cycling', 'virtual_ride', 'cycling', 'road_biking', 'outdoor_cycling', 'road cycling', 'cross cycling', 'offroad cycling', 'mountain_biking', 'mountain biking']:
+      name = "cycling"
+    elif self.name in ['running', 'Trail Running', 'Street Running', 'treadmill_running', 'treadmill running', 'trail_running', 'trail running']:
+      name = "running"
+    elif self.name in ['lap_swimming', 'pool swimming', 'swimming', 'open water swimming']:
+      name = 'swimming'
+    elif self.name in ['cardio', 'indoor_cardio']:
+      name = 'cardio'
+    elif self.name in ['strength_training', 'strength']:
+      name = 'strength'
+    elif self.name in ['hiking']:
+      name = 'hiking'
+    elif self.name in ['yoga']:
+      name = 'yoga'
+    elif self.name in ['inline_skating', 'inline hockey']:
+      name = 'inline skating'
+    elif self.name in ['multi_sport', 'triathlon']:
+      name = 'triathlon'    
+    elif self.name in ['wakeboarding']:
+      name = 'wakeboarding'    
+    elif self.name in ['other']:
+      name = 'other'    
     else: 
-      sport.name = self.name
-    return sport    
+      name = self.name
+    return name    
  
+  def cleanup_sportstype(self):
+    if self.name in ['indoor_cycling', 'virtual_ride']:
+      self.name = 'indoor cycling'
+    elif self.name in ['cycling', 'road_biking']:
+      self.name = 'road cycling'
+    elif self.name in ['mountain_biking']:
+      self.name = 'mountain biking'
+    elif self.name in ['running']:
+      self.name = 'running'
+    elif self.name in ['treadmill_running']:
+      self.name = 'treadmill running'
+    elif self.name in ['trail_running']:
+      self.name = 'trail running'
+    elif self.name in ['lap_swimming', 'swimming']:
+      self.name = 'pool swimming'
+    elif self.name in ['open_water_swimming']:
+      self.name = 'open water swimming'
+    elif self.name in ['cardio', 'indoor_cardio']:
+      self.name = 'cardio'
+    elif self.name in ['strength_training']:
+      self.name = 'strength'
+    elif self.name in ['hiking']:
+      self.name = 'hiking'
+    elif self.name in ['yoga']:
+      self.name = 'yoga'
+    elif self.name in ['inline_skating', 'inline hockey']:
+      self.name = 'inline skating'
+    elif self.name in ['multi_sport']:
+      self.name = 'triathlon'    
+    elif self.name in ['wakeboarding']:
+      self.name = 'wakeboarding'    
+    elif self.name in ['other']:
+      self.name = 'other'    
+    return self.name
+
   def add(self, database):
+    self.name = self.cleanup_sportstype()
+    self.sport_id = Sport(name = self.associate_sport()).add(database)
     id = database.session.query(SportsType.id).filter(SportsType.name == self.name).first()
     if id:
       id = id[0]
     else:
-      sport = self.associate_sport()
-      self.sport_id = sport.add(database)
-      logging.info("Adding new sportstype '{}'".format(self.name))
       database.session.add(self)
       database.session.flush()
+      logging.info("Adding new sportstype '{} id {}'".format(self.name, self.id))
       id = self.id
     return id
 
@@ -96,16 +149,16 @@ class Workout(Base):
   # description
   name                                  = Column(String) 
   description                           = Column(String)
-  min_temperature                       = Column(Numeric(4, 1))
-  max_temperature                       = Column(Numeric(4, 1))
+  min_temperature                       = Column(Integer)
+  max_temperature                       = Column(Integer)
   # time
   start_time                            = Column(DateTime)
   duration_sec                          = Column(Integer)
   moving_duration_sec                   = Column(Integer)
   # key performance indicators
   distance_m                            = Column(Integer)
-  average_speed_m_per_sec               = Column(Numeric(7, 2))
-  max_speed_m_per_sec                   = Column(Numeric(7, 2))
+  average_speed_m_per_sec               = Column(Float)
+  max_speed_m_per_sec                   = Column(Float)
   elevation_gain_m                      = Column(Integer)
   elevation_loss_m                      = Column(Integer)
   calories                              = Column(Integer)
@@ -115,10 +168,10 @@ class Workout(Base):
   max_power                             = Column(Integer)
   norm_power                            = Column(Integer)
   # training effect
-  aerobic_training_effect               = Column(Numeric(4, 1))
-  anaerobic_training_effect             = Column(Numeric(4, 1))
-  training_stress_score                 = Column(Integer)
-  intensity_factor                      = Column(Integer)
+  aerobic_training_effect               = Column(Float)
+  anaerobic_training_effect             = Column(Float)
+  training_stress_score                 = Column(Float)
+  intensity_factor                      = Column(Float)
   # cadences
   average_running_cadence_steps_per_min = Column(Integer)
   max_running_cadence_steps_per_min     = Column(Integer)
@@ -130,24 +183,25 @@ class Workout(Base):
   average_swolf                         = Column(Integer)
   active_lengths                        = Column(Integer)
   pool_length                           = Column(Integer)
-  unit_of_pool_length                   = Column(Integer)
+  unit_of_pool_length                   = Column(String)
+  pool_length_factor                    = Column(Integer)
   strokes                               = Column(Integer)
   avg_stroke_distance                   = Column(Integer)
   avg_stroke_cadence                    = Column(Integer)
   max_stroke_cadence                    = Column(Integer)
-  avg_strokes                           = Column(Integer)
-  min_strokes                           = Column(Integer)
+  avg_strokes                           = Column(Float)
+  min_strokes                           = Column(Float)
   # running specific
-  left_balance                          = Column(Numeric(5, 2))
-  right_balance                         = Column(Numeric(5, 2))
-  avg_left_balance                      = Column(Numeric(5, 2))
-  avg_vertical_oscillation              = Column(Numeric(5, 2))
+  left_balance                          = Column(Float)
+  right_balance                         = Column(Float)
+  avg_left_balance                      = Column(Float)
+  avg_vertical_oscillation              = Column(Float)
   avg_ground_contact_time               = Column(Integer)
   avg_stride_length                     = Column(Integer)
   avg_fractional_cadence                = Column(Integer)
   max_fractional_cadence                = Column(Integer)
-  avg_vertical_ratio                    = Column(Integer)
-  avg_ground_contact_balance            = Column(Integer)
+  avg_vertical_ratio                    = Column(Float)
+  avg_ground_contact_balance            = Column(Float)
   # fitness level
   vo2_max_value                         = Column(Integer)
   lactate_threshold_bpm                 = Column(Integer)
@@ -184,7 +238,7 @@ class Workout(Base):
     if id:
       id = id[0]
     else:
-      logging.info("Adding new workout '{}'".format(self.name))
+      logging.info("Adding new workout '{}' with sportstype {}".format(self.name, self.sportstype_id))
       database.session.add(self)
       database.session.flush()
       id = self.id
