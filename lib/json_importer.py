@@ -31,7 +31,8 @@ class JsonImporter(WorkoutImporter):
         workout.source = "JSON import"
         workout.external_id = record['activityId'] 
         sportstype = SportsType(name = record['activityType']['typeKey'])
-        workout.sportstype_id = sportstype.add(db)
+        sportstype.add(db)
+        workout.sportstype_id = sportstype.id 
         workout.sport_id = sportstype.sport_id
         workout.name = record['activityName']
         workout.description = record['description']

@@ -20,13 +20,12 @@ class Sport(Base):
   def add(self, database):
     id = database.session.query(Sport.id).filter(Sport.name == self.name).first()
     if id:
-      id = id[0]
+      return False
     else:
       logging.info("Adding new sport '{}'".format(self.name))
       database.session.add(self)
       database.session.flush()
-      id = self.id
-    return id
+      return True 
 
   @classmethod
   def get(cls, database, name):
@@ -48,33 +47,35 @@ class SportsType(Base):
   sport_id  = Column(Integer, ForeignKey('sports.id'))
   workouts  = relationship("Workout")
 
-  def associate_sport(self):
-    name = None
+  def associate_sport(self, database):
+    sport = Sport()
     if self.name in ['indoor_cycling', 'indoor cycling', 'virtual_ride', 'cycling', 'road_biking', 'outdoor_cycling', 'road cycling', 'cross cycling', 'offroad cycling', 'mountain_biking', 'mountain biking']:
-      name = "cycling"
+      sport.name = "cycling"
     elif self.name in ['running', 'Trail Running', 'Street Running', 'treadmill_running', 'treadmill running', 'trail_running', 'trail running']:
-      name = "running"
+      sport.name = "running"
     elif self.name in ['lap_swimming', 'pool swimming', 'swimming', 'open water swimming']:
-      name = 'swimming'
+      sport.name = 'swimming'
     elif self.name in ['cardio', 'indoor_cardio']:
-      name = 'cardio'
+      sport.name = 'cardio'
     elif self.name in ['strength_training', 'strength']:
-      name = 'strength'
+      sport.name = 'strength'
     elif self.name in ['hiking']:
-      name = 'hiking'
+      sport.name = 'hiking'
     elif self.name in ['yoga']:
-      name = 'yoga'
+      sport.name = 'yoga'
     elif self.name in ['inline_skating', 'inline hockey']:
-      name = 'inline skating'
+      sport.name = 'inline skating'
     elif self.name in ['multi_sport', 'triathlon']:
-      name = 'triathlon'    
+      sport.name = 'triathlon'    
     elif self.name in ['wakeboarding']:
-      name = 'wakeboarding'    
+      sport.name = 'wakeboarding'    
     elif self.name in ['other']:
-      name = 'other'    
+      sport.name = 'other'    
     else: 
-      name = self.name
-    return name    
+      sport.name = self.name
+
+    sport.add(database)
+    self.sport_id = sport.id
  
   def cleanup_sportstype(self):
     if self.name in ['indoor_cycling', 'virtual_ride']:
@@ -109,20 +110,18 @@ class SportsType(Base):
       self.name = 'wakeboarding'    
     elif self.name in ['other']:
       self.name = 'other'    
-    return self.name
 
   def add(self, database):
-    self.name = self.cleanup_sportstype()
-    self.sport_id = Sport(name = self.associate_sport()).add(database)
+    self.cleanup_sportstype()
+    self.associate_sport(database)
     id = database.session.query(SportsType.id).filter(SportsType.name == self.name).first()
     if id:
-      id = id[0]
+      return False
     else:
       database.session.add(self)
       database.session.flush()
       logging.info("Adding new sportstype '{} id {}'".format(self.name, self.id))
-      id = self.id
-    return id
+      return True
 
   @classmethod
   def get(cls, database, name):
@@ -236,13 +235,12 @@ class Workout(Base):
       .filter(Workout.source == self.source) \
       .first()
     if id:
-      id = id[0]
+      return False
     else:
       logging.info("Adding new workout '{}' with sportstype {}".format(self.name, self.sportstype_id))
       database.session.add(self)
       database.session.flush()
-      id = self.id
-    return id
+      return True
 
 
 class WorkoutsDatabase:
