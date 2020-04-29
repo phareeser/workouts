@@ -18,7 +18,6 @@ GARMIN_SSO_LOGIN_URL = "https://sso.garmin.com/sso/signin"
 GARMIN_SERVICE_URL   = "https://connect.garmin.com/modern"
 GARMIN_SESSION_URL   = "https://connect.garmin.com/legacy/session"
 
-
 GARMIN_ACTIVITIES_SEARCH = "https://connect.garmin.com/modern/proxy/activitylist-service/activities/search/activities"
 GARMIN_GPX_EXPORT = "http://connect.garmin.com/proxy/activity-service-1.1/gpx/activity/%d?full=true&#8220;"
 GARMIN_KML_EXPORT = "http://connect.garmin.com/proxy/activity-service-1.0/kml/activity/%d?full=true&#8220;"
@@ -92,9 +91,12 @@ class GarminImporter(WorkoutImporter):
     workout = Workout()
     workout.source = "Garmin"
     workout.external_id = record['activityId'] 
+
     sportstype = SportsType(name = record['activityType']['typeKey'])
-    workout.sportstype_id = sportstype.add(db)
+    sportstype.add(db)
+    workout.sportstype_id = sportstype.id
     workout.sport_id = sportstype.sport_id
+
     workout.name = record['activityName']
     workout.description = record['description']
     if record['minTemperature']:

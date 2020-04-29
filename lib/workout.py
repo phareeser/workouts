@@ -20,11 +20,12 @@ class Sport(Base):
   def add(self, database):
     id = database.session.query(Sport.id).filter(Sport.name == self.name).first()
     if id:
+      self.id = id[0]
       return False
     else:
-      logging.info("Adding new sport '{}'".format(self.name))
       database.session.add(self)
       database.session.flush()
+      logging.info("Adding new sport '{}' id {}".format(self.name, self.id))
       return True 
 
   @classmethod
@@ -116,11 +117,12 @@ class SportsType(Base):
     self.associate_sport(database)
     id = database.session.query(SportsType.id).filter(SportsType.name == self.name).first()
     if id:
+      self.id = id[0]
       return False
     else:
       database.session.add(self)
       database.session.flush()
-      logging.info("Adding new sportstype '{} id {}'".format(self.name, self.id))
+      logging.info("Adding new sportstype '{}' id {} of sport {}".format(self.name, self.id, self.sport_id))
       return True
 
   @classmethod
@@ -224,7 +226,7 @@ class Workout(Base):
   max_avg_power_18000                   = Column(Integer)
 
   def __repr__(self):
-    return "({}) {} from {} doing {} ({}) imported by {}".format(self.id, self.name, self.date, self.sportstype_id, self.sport_id, self.source)
+    return "({}) {} from {} doing {} ({}) imported by {}".format(self.id, self.name, self.start_time, self.sportstype_id, self.sport_id, self.source)
 
   def close(self):
     pass
@@ -237,9 +239,9 @@ class Workout(Base):
     if id:
       return False
     else:
-      logging.info("Adding new workout '{}' with sportstype {}".format(self.name, self.sportstype_id))
       database.session.add(self)
       database.session.flush()
+      logging.info("Adding new workout '{}' id {}, with sportstype {}".format(self.name, self.id, self.sportstype_id))
       return True
 
 
