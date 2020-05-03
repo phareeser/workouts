@@ -13,6 +13,7 @@ from datetime import date
 
 from lib.garmin_importer import GarminImporter
 from lib.json_importer import JsonImporter
+from lib.json_exporter import JsonExporter
 from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase 
 
 parser = argparse.ArgumentParser()
@@ -20,6 +21,7 @@ parser.add_argument("-v", "--verbose", action='count', help="increase verbosity,
 parser.add_argument("action", help="show workouts, import from external source, export or check for duplicates", choices=['show', 'import', 'export', 'check'])
 parser.add_argument("database", help="the workouts database")
 parser.add_argument("-s", "--source", help="source to import workouts from", choices=['garmin', 'csv', 'json'])
+parser.add_argument("-d", "--destination", help="destination format to export workouts to", choices=['csv', 'json'])
 parser.add_argument("-f", "--filename", help="filename to import from or export to")
 parser.add_argument("-gu", "--garminuser", help="garmin connect user name")
 parser.add_argument("-gp", "--garminpwd", help="garmin connect password")
@@ -53,8 +55,17 @@ if (args.action == "import"):
   importer.close_session()
   # TODO handle exceptions !!!!!!!!!!!!
 elif (args.action == "export"):
-  # TODO
-  pass
+  if (args.destination == 'csv'):  
+    print("csv exporter not yet implemented")
+    exit
+  elif (args.destination == 'json'):  
+    exporter = JsonExporter(args.filename)
+  else:
+    print("exporter {} not implemented".format(args.destination))
+    exit
+  exporter.create_session()
+  exporter.export_workouts(db)
+  exporter.close_session()
 if (args.action == "show"):
   db.showall()
 elif (args.action == "check"):

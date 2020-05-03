@@ -228,6 +228,28 @@ class Workout(Base):
   def __repr__(self):
     return "({}) {} from {} doing {} ({}) imported by {}".format(self.id, self.name, self.start_time, self.sportstype_id, self.sport_id, self.source)
 
+  def as_dict(self, db):
+    dict = {}
+    for column in self.__table__.columns:
+      key = column.name
+      if key == "id":
+        continue
+      elif key == "external_id":
+        value = getattr(self, key)
+        key = "id"
+      elif key == "start_time":
+        value = str(getattr(self, key))
+      elif key == "sport_id":
+        value = db.session.query(Sport.name).filter(Sport.id == getattr(self, key)).first()[0]
+        key ="sport"
+      elif key == "sportstype_id":
+        value = db.session.query(SportsType.name).filter(SportsType.id == getattr(self, key)).first()[0]
+        key = "sportstype"
+      else:
+        value = getattr(self, key)
+      dict[key] = value
+    return dict    
+         
   def close(self):
     pass
 
