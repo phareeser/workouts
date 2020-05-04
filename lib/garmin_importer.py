@@ -8,7 +8,6 @@ import json
 import logging
 from datetime import datetime
 
-
 from lib.workout_importer import WorkoutImporter
 from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase 
 
@@ -116,7 +115,8 @@ class GarminImporter(WorkoutImporter):
       workout.max_speed_m_per_sec = round(record['maxSpeed'], 3)
     workout.elevation_gain_m = record['elevationGain']
     workout.elevation_loss_m = record['elevationLoss']
-    workout.calories = record['calories']
+    if record['calories']:
+      workout.calories = int(record['calories']) 
     workout.average_hr = record['averageHR']
     workout.max_hr = record['maxHR']
     workout.avg_power = record['avgPower']

@@ -46,7 +46,6 @@ class JsonImporter(WorkoutImporter):
           setattr(workout, key, record[key])
         if 'source' not in record:
           workout.source = "JSON import"
-        logging.info(workout)
         if workout.add(db):
           total_imported_workouts += 1
     logging.info("{} workouts fetched and {} workouts imported".format(total_fetched_workouts, total_imported_workouts))

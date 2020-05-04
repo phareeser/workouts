@@ -23,8 +23,11 @@ class JsonExporter(WorkoutExporter):
 
   def export_workouts(self, db):
     logging.info("exporting workouts ...")
+    exported_workouts = 0
     workouts = db.session.query(Workout).all()
     json_data = []
     for workout in workouts:
       json_data.append(workout.as_dict(db))
+      exported_workouts += 1
     json.dump(json_data, self.json)
+    logging.info("{} workouts exported".format(exported_workouts))
