@@ -239,9 +239,9 @@ class Workout(Base):
         key = "id"
       elif key == "start_time":
         value = str(getattr(self, key))
-      elif key == "sport_id":
-        value = db.session.query(Sport.name).filter(Sport.id == getattr(self, key)).first()[0]
-        key ="sport"
+      #elif key == "sport_id":
+      #  value = db.session.query(Sport.name).filter(Sport.id == getattr(self, key)).first()[0]
+      #  key ="sport"
       elif key == "sportstype_id":
         value = db.session.query(SportsType.name).filter(SportsType.id == getattr(self, key)).first()[0]
         key = "sportstype"
