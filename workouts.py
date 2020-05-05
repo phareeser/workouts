@@ -14,6 +14,8 @@ from datetime import date
 from lib.garmin_importer import GarminImporter
 from lib.json_importer import JsonImporter
 from lib.json_exporter import JsonExporter
+from lib.csv_importer import CsvImporter
+from lib.csv_exporter import CsvExporter
 from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase 
 
 parser = argparse.ArgumentParser()
@@ -43,8 +45,7 @@ if (args.action == "import"):
   if (args.source == 'garmin'):
     importer = GarminImporter(args.garminuser, args.garminpwd)
   elif (args.source == 'csv'):  
-    print("csv importer not yet implemented")
-    exit
+    importer = CsvImporter(args.filename)
   elif (args.source == 'json'):  
     importer = JsonImporter(args.filename)
   else:
@@ -56,8 +57,7 @@ if (args.action == "import"):
   # TODO handle exceptions !!!!!!!!!!!!
 elif (args.action == "export"):
   if (args.destination == 'csv'):  
-    print("csv exporter not yet implemented")
-    exit
+    exporter = CsvExporter(args.filename)
   elif (args.destination == 'json'):  
     exporter = JsonExporter(args.filename)
   else:
