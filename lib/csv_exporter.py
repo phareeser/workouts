@@ -5,24 +5,27 @@ from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase
 import logging
 import csv
 
+logger = logging.getLogger(__name__)
+
+
 class CsvExporter(WorkoutExporter):
   def __init__(self, filename):
-    logging.info("csv exporter initializing ...")
+    logger.info("csv exporter initializing ...")
     self.csv = None
     self.filename = filename    
   
   def create_session(self):
-    logging.info("csv exporter creating session ...")
+    logger.info("csv exporter creating session ...")
     self.csv = open(self.filename, 'w', encoding='utf-8', newline='')
 
   def close_session(self):
-    logging.info("csv exporter closing session ...")
+    logger.info("csv exporter closing session ...")
     if self.csv:
       self.csv.close()
     self.csv = None
 
   def export_workouts(self, db):
-    logging.info("exporting workouts ...")
+    logger.info("exporting workouts ...")
     exported_workouts = 0
     workouts = db.session.query(Workout).all()
     csv_data = []
@@ -36,4 +39,4 @@ class CsvExporter(WorkoutExporter):
       exported_workouts += 1
     writer = csv.writer(self.csv)
     writer.writerows(csv_data)
-    logging.info("{} workouts exported".format(exported_workouts))
+    logger.info("{} workouts exported".format(exported_workouts))

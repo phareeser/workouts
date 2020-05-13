@@ -3,13 +3,13 @@
 import logging
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, Integer, DateTime, Float
+from sqlalchemy import Column, String, Integer, DateTime, Float, Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
-
+logger = logging.getLogger(__name__)
 
 class Sport(Base):
     __tablename__ = 'sports'
@@ -27,7 +27,7 @@ class Sport(Base):
         else:
             database.session.add(self)
             database.session.flush()
-            logging.info("Adding new sport '{}' id {}".format(self.name, self.id))
+            logger.info("Adding new sport '{}' id {}".format(self.name, self.id))
             return True
 
     @classmethod
@@ -128,7 +128,7 @@ class SportsType(Base):
         else:
             database.session.add(self)
             database.session.flush()
-            logging.info("Adding new sportstype '{}' id {} of sport {}".format(
+            logger.info("Adding new sportstype '{}' id {} of sport {}".format(
                 self.name, self.id, self.sport_id))
             return True
 
@@ -152,6 +152,11 @@ class Workout(Base):
     id = Column(Integer, primary_key=True)
     source = Column(String(32))
     external_id = Column(Integer)
+
+    # organisational
+    is_duplicate_with = Column(Integer)
+    manual_check_reqired = Column(Boolean)
+
     # sportstype
     sportstype_id = Column(Integer, ForeignKey('sportstypes.id'))
     sport_id = Column(Integer, ForeignKey('sports.id'))
@@ -302,7 +307,7 @@ class Workout(Base):
         else:
             database.session.add(self)
             database.session.flush()
-            logging.info("Adding new workout '{}' id {}, with sportstype {}".format(
+            logger.info("Adding new workout '{}' id {}, with sportstype {}".format(
                 self.name, self.id, self.sportstype_id))
             return True
 
@@ -310,7 +315,7 @@ class Workout(Base):
 class WorkoutsDatabase:
     def __init__(self, database):
         engine = create_engine('sqlite:///{}'.format(database), echo=False)
-        logging.info("connecting to {}".format(database))
+        logger.info("connecting to {}".format(database))
         Session = sessionmaker(bind=engine)
         Base.metadata.create_all(engine)
         self.session = Session()
@@ -334,3 +339,37 @@ class WorkoutsDatabase:
         workouts = self.session.query(Workout).all()
         for workout in workouts:
             print(workout)
+
+    def check(self):
+        ''' Database cleanup
+            Check for duplicate workouts
+            If duplicates are detected, use the most reliable information and mark the duplicate workouts 
+
+            Duplicate detection:
+                - If workouts are overlapping in time, further checks are required
+                    - If they are of the same sportstype, then they are duplicates
+                    - If they are of different sportstype, then "manual_check_required" will be set to True
+
+            Cleansing of duplicates:
+                1. create a new workout
+                2. mark the original workout as duplicates and add a reference in "is_duplicate_with"
+                3. decide for the more reliable record:
+                    1. source == Garmin is preferred
+                    2. the workout with the better average speed is preferred
+                4. update the new workout with the attributes of the preferred duplicate workout
+                5. update the new workout with the attributes of the not preferred workout, if this attribute is not yet set
+            
+        '''
+    
+        number_of_checked_workouts = 0
+        number_of_combined_workouts = 0
+        number_of_duplicate_workouts = 0        
+        workouts = self.session.query(Workout).all()
+        for workout in workouts:
+            number_of_checked_workouts += 1
+            #duplicates = self.session.query(Workout).filter(Workout.start_time == workout.start_time) 
+
+        logger.info('{} workouts checked, {} of them were duplicate, created {} combined workouts'.\
+            format(number_of_checked_workouts,
+                   number_of_combined_workouts,
+                   number_of_duplicate_workouts))

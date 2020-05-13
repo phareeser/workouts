@@ -11,6 +11,8 @@ from datetime import datetime
 from lib.workout_importer import WorkoutImporter
 from lib.workout import Workout, Sport, SportsType, WorkoutsDatabase 
 
+logger = logging.getLogger(__name__)
+
 
 GARMIN_SSO_URL       = "https://sso.garmin.com"
 GARMIN_SSO_LOGIN_URL = "https://sso.garmin.com/sso/signin"
@@ -26,7 +28,7 @@ GARMIN_TCX_EXPORT = "http://connect.garmin.com/proxy/activity-service-1.0/tcx/ac
 class GarminImporter(WorkoutImporter):
 
   def _authenticate(self):
-    logging.info("signing in to Garmin ...")
+    logger.info("signing in to Garmin ...")
     
     form_data = {
       "username": self.username,
@@ -37,15 +39,15 @@ class GarminImporter(WorkoutImporter):
     headers={'origin': GARMIN_SSO_URL}
     response = self.session.post(GARMIN_SSO_LOGIN_URL, headers=headers, params=params, data=form_data)
 
-    #logging.debug("RESPONSE HEADERS: {}".format(response.headers))
-    #logging.debug("RESPONSE TEXT: {}".format(response.text))
+    #logger.debug("RESPONSE HEADERS: {}".format(response.headers))
+    #logger.debug("RESPONSE TEXT: {}".format(response.text))
     if response.status_code != 200:
       raise ValueError("sign in failed")
     title = re.search(r'<title>(.*?)</title>', response.text)
     if title:
-      logging.info("Garmin responded with {}".format(title.group(1)))
+      logger.info("Garmin responded with {}".format(title.group(1)))
     else:
-      logging.warning("NO TITLE FOUND IN RESPONE")
+      logger.warning("NO TITLE FOUND IN RESPONE")
         
     # response contains 'response_url', looking like this:
     # response_url = "https:\/\/connect.garmin.com\/modern?ticket=ST-05295530-W4lJ5jIeFPz5MgPgHvND-cas";
@@ -55,8 +57,8 @@ class GarminImporter(WorkoutImporter):
       raise RuntimeError("authentication failed")
     authentication_url = match.group(1).replace("\\", "")
     response = self.session.get(authentication_url)
-    #logging.debug("RESPONSE HEADERS: {}".format(response.headers))
-    #logging.debug("RESPONSE TEXT: {}".format(response.text))
+    #logger.debug("RESPONSE HEADERS: {}".format(response.headers))
+    #logger.debug("RESPONSE TEXT: {}".format(response.text))
 
     if response.status_code != 200:
       raise RuntimeError(
@@ -64,27 +66,27 @@ class GarminImporter(WorkoutImporter):
 
     title = re.search(r'<title>(.*?)</title>', response.text)
     if title:
-      logging.info("logged in to {}".format(title.group(1)))
+      logger.info("logged in to {}".format(title.group(1)))
     else:
-      logging.warning("NO TITLE FOUND IN RESPONE")
+      logger.warning("NO TITLE FOUND IN RESPONE")
 
   def __init__(self, username, password):
-    logging.info("garmin importer initializing ...")
+    logger.info("garmin importer initializing ...")
     self.username = username
     self.password = password
     self.session = None
 
   def create_session(self):
-    logging.info("garmin importer creating session ...")
+    logger.info("garmin importer creating session ...")
     self.session = requests.Session()
     self._authenticate()
   
   def close_session(self):
-    logging.info("garmin importer closing session ...")
+    logger.info("garmin importer closing session ...")
     if self.session:
       self.session.close()
       self.session = None
-    logging.info("session closed")
+    logger.info("session closed")
 
   def _create_workout(self, record, db):
     workout = Workout()
@@ -198,7 +200,7 @@ class GarminImporter(WorkoutImporter):
   def import_workouts(self, db):
     CHUNK_SIZE = 100
 
-    logging.info("fetching workouts ...")
+    logger.info("fetching workouts ...")
     
     workouts_left = True
     total_imported_workouts = 0
@@ -232,7 +234,7 @@ class GarminImporter(WorkoutImporter):
       total_imported_workouts +=  imported_workouts
       total_fetched_workouts += fetched_workouts
 
-    logging.info("{} workouts fetched and {} workouts imported".format(total_fetched_workouts, total_imported_workouts))
+    logger.info("{} workouts fetched and {} workouts imported".format(total_fetched_workouts, total_imported_workouts))
     return
 
 

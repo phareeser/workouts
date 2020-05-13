@@ -6,24 +6,27 @@ import logging
 import json
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
+
 class JsonImporter(WorkoutImporter):
   def __init__(self, filename):
-    logging.info("json importer initializing ...")
+    logger.info("json importer initializing ...")
     self.json = None
     self.filename = filename    
   
   def create_session(self):
-    logging.info("json importer creating session ...")
+    logger.info("json importer creating session ...")
     self.json = open(self.filename, "r")
   
   def close_session(self):
-    logging.info("json importer closing session ...")
+    logger.info("json importer closing session ...")
     if self.json:
       self.json.close()
     self.json = None
 
   def import_workouts(self, db):
-    logging.info("fetching workouts ...")
+    logger.info("fetching workouts ...")
     total_fetched_workouts = 0
     total_imported_workouts = 0
     for data in self.json:
@@ -48,6 +51,6 @@ class JsonImporter(WorkoutImporter):
           workout.source = "JSON import"
         if workout.add(db):
           total_imported_workouts += 1
-    logging.info("{} workouts fetched and {} workouts imported".format(total_fetched_workouts, total_imported_workouts))
+    logger.info("{} workouts fetched and {} workouts imported".format(total_fetched_workouts, total_imported_workouts))
 
 

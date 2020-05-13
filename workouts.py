@@ -34,9 +34,14 @@ args = parser.parse_args()
 if not args.verbose or args.verbose > 4:
   log_level = "CRITICAL"
 else:
-  log_levels = [logging.NOTSET, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG]
+  log_levels = [logging.NOTSET,
+                logging.ERROR,
+                logging.WARNING,
+                logging.INFO,
+                logging.DEBUG]
   log_level = log_levels[args.verbose]
-logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
+logging.basicConfig(level=log_level)
+logger = logging.getLogger(__name__)
 
 db = WorkoutsDatabase(args.database)
 
@@ -69,7 +74,6 @@ elif (args.action == "export"):
 if (args.action == "show"):
   db.showall()
 elif (args.action == "check"):
-  # TODO
-  pass
+  db.check()
 
 db.close()
