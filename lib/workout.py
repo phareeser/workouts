@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import logging
+import datetime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer, DateTime, Float, Boolean
@@ -12,6 +13,13 @@ Base = declarative_base()
 logger = logging.getLogger(__name__)
 
 class Sport(Base):
+    """
+    Class manages Sport model
+    Sport is the generic description of a SportsType: e.g. Sport is 'Cycling' for SportsType 'Montainbiking'
+    rferenced by models SportsType and Workout
+    - 'add' a sport record to the database
+    - 'get' all sport records from the database  
+    """
     __tablename__ = 'sports'
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -43,6 +51,16 @@ class Sport(Base):
 
 
 class SportsType(Base):
+    """
+    Class manages SportsType model
+    SportsType is a specific description of an activity, e.g. 'Treadmill Running', whereas the Sport is more generic 'Running'
+    referenced by model Workout
+    referencing model Sport
+    - 'add' a sportstype record to the database
+    - 'get' all sportstype records from the database  
+    - 'associate_sport' identifies the generic sport and creates a new sport record if not existing
+    - 'cleanup_sportstype modifies the name of the sportstype to achieve a unified form when imported with different names with the same meaning
+    """
     __tablename__ = 'sportstypes'
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -146,6 +164,15 @@ class SportsType(Base):
 
 
 class Workout(Base):
+    """
+    Class manages Workout model
+    Workout contains all summary information of a sports activity
+    referencing models Sport and Sportstype
+    - 'add' a workout record to the database
+    - 'as_dict' returns a dictionary representation of a workout instance
+    - 'as_list' returns a list representation of a workout instance
+    - 'header' returns a list of all attributes
+    """
     __tablename__ = 'workouts'
 
     # identification
@@ -246,16 +273,13 @@ class Workout(Base):
         dict = {}
         for column in self.__table__.columns:
             key = column.name
-            if key == "id":
+            if key in ["id", "sport_id", "is_duplicate_with", "manual_check_required"]:
                 continue
             elif key == "external_id":
                 value = getattr(self, key)
                 key = "id"
             elif key == "start_time":
                 value = str(getattr(self, key))
-            #elif key == "sport_id":
-            #  value = db.session.query(Sport.name).filter(Sport.id == getattr(self, key)).first()[0]
-            #  key ="sport"
             elif key == "sportstype_id":
                 value = db.session.query(SportsType.name).filter(
                     SportsType.id == getattr(self, key)).first()[0]
@@ -270,12 +294,10 @@ class Workout(Base):
         keys = self.__table__.columns.keys()
         list = []
         for key in keys:
-            if key == "external_id":
+            if key in ["external_id", "sport_id", "is_duplicate_with", "manual_check_required"]:
                 continue
             elif key == "id":
                 list.append(getattr(self, "external_id"))
-            elif key == "sport_id":
-                continue
             elif key == "sportstype_id":
                 list.append(db.session.query(SportsType.name).filter(
                     SportsType.id == getattr(self, key)).first()[0])
@@ -290,12 +312,11 @@ class Workout(Base):
             if keys[i] == "sportstype_id":
                 keys[i] = "sportstype"
                 break
+        keys.remove("is_duplicate_with")
+        keys.remove("manual_check_reqired")
         keys.remove("external_id")
         keys.remove("sport_id")
         return keys
-
-    def close(self):
-        pass
 
     def add(self, database):
         id = database.session.query(Workout.id) \
@@ -313,6 +334,14 @@ class Workout(Base):
 
 
 class WorkoutsDatabase:
+    """
+    Class handles SQLite DB session and manages functions that comprise the whole database rather than distinct records
+    - create database
+    - create session
+    - close session
+    - show all records of the database
+    - cleanup database
+    """
     def __init__(self, database):
         engine = create_engine('sqlite:///{}'.format(database), echo=False)
         logger.info("connecting to {}".format(database))
@@ -366,10 +395,19 @@ class WorkoutsDatabase:
         number_of_duplicate_workouts = 0        
         workouts = self.session.query(Workout).all()
         for workout in workouts:
+            logger.debug('WORKOUT: {}'.format(workout))
             number_of_checked_workouts += 1
-            #duplicates = self.session.query(Workout).filter(Workout.start_time == workout.start_time) 
-
-        logger.info('{} workouts checked, {} of them were duplicate, created {} combined workouts'.\
-            format(number_of_checked_workouts,
-                   number_of_combined_workouts,
-                   number_of_duplicate_workouts))
+            duplicates = self.session.query(Workout)\
+                .filter(Workout.start_time >= workout.start_time)\
+                .filter(Workout.start_time < (workout.start_time + datetime.timedelta(seconds=workout.duration_sec)))\
+                .filter(Workout.is_duplicate_with is not None)\
+                .filter(Workout.manual_check_reqired is not None)\
+                .filter(Workout.id != workout.id)
+            for duplicate in duplicates:
+                logger.debug('    DUPLICATE: {}'.format(duplicate))
+                number_of_duplicate_workouts +=1
+ 
+        logger.info('{} workouts checked, {} of them were duplicate, created {} combined workouts'\
+            .format(number_of_checked_workouts,
+                    number_of_duplicate_workouts,
+                    number_of_combined_workouts,))
