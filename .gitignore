@@ -1,4 +1,3 @@
-*.json
-*.csv
 workouts.db
 __pycache__
+.vscode

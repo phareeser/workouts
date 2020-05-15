@@ -18,7 +18,6 @@ class Sport(Base):
     Sport is the generic description of a SportsType: e.g. Sport is 'Cycling' for SportsType 'Montainbiking'
     rferenced by models SportsType and Workout
     - 'add' a sport record to the database
-    - 'get' all sport records from the database  
     """
     __tablename__ = 'sports'
     id = Column(Integer, primary_key=True)
@@ -38,14 +37,6 @@ class Sport(Base):
             logger.info("Adding new sport '{}' id {}".format(self.name, self.id))
             return True
 
-    @classmethod
-    def get(cls, database, name):
-        result = database.session.query(Sport).filter(Sport.name == name).all()
-        if result:
-            return result[0]
-        else:
-            return None
-
     def __repr__(self):
         return "({}) {}".format(self.id, self.name)
 
@@ -57,7 +48,6 @@ class SportsType(Base):
     referenced by model Workout
     referencing model Sport
     - 'add' a sportstype record to the database
-    - 'get' all sportstype records from the database  
     - 'associate_sport' identifies the generic sport and creates a new sport record if not existing
     - 'cleanup_sportstype modifies the name of the sportstype to achieve a unified form when imported with different names with the same meaning
     """
@@ -149,15 +139,6 @@ class SportsType(Base):
             logger.info("Adding new sportstype '{}' id {} of sport {}".format(
                 self.name, self.id, self.sport_id))
             return True
-
-    @classmethod
-    def get(cls, database, name):
-        result = database.session.query(
-            SportsType).filter(SportsType.name == name).all()
-        if result:
-            return result[0]
-        else:
-            return None
 
     def __repr__(self):
         return "({}) {} belongs to {}".format(self.id, self.name, self.sport_id)

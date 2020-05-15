@@ -52,5 +52,6 @@ class JsonImporter(WorkoutImporter):
         if workout.add(db):
           total_imported_workouts += 1
     logger.info("{} workouts fetched and {} workouts imported".format(total_fetched_workouts, total_imported_workouts))
+    return(total_fetched_workouts, total_imported_workouts)
 
 
