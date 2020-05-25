@@ -1,5 +1,7 @@
 import unittest
 import os
+from datetime import datetime
+
 
 import lib
 from lib.workout import Workout, WorkoutsDatabase, Sport, SportsType
@@ -13,7 +15,7 @@ class TestWorkoutsDatabase(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_create_session(self):
+    def test_create_session(self): 
         db = WorkoutsDatabase(self.DB_NAME)
         self.assertIsNotNone(db)
         os.remove(self.DB_NAME)
@@ -108,7 +110,7 @@ class TestWorkout(unittest.TestCase):
         self.assertIn('sportstype', as_dict)
 
     def test_workout_as_list(self):
-        workout = Workout(name="TEST_WORKOUT")
+        workout = Workout(name="TEST_WORKOUT", start_time=datetime.strptime("2020-05-05 20:00:00", "%Y-%m-%d %H:%M:%S"))
         sportstype = SportsType(name="TEST_SPORTSTYPE")
         sportstype.add(self.db)
         workout.sportstype_id = sportstype.id

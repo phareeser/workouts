@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, String, Integer, DateTime, Float, Boolean
 from sqlalchemy import ForeignKey
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, or_, and_, func
 from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
@@ -163,7 +163,7 @@ class Workout(Base):
 
     # organisational
     is_duplicate_with = Column(Integer)
-    manual_check_reqired = Column(Boolean)
+    manual_check_required_with = Column(Integer)
 
     # sportstype
     sportstype_id = Column(Integer, ForeignKey('sportstypes.id'))
@@ -254,7 +254,7 @@ class Workout(Base):
         dict = {}
         for column in self.__table__.columns:
             key = column.name
-            if key in ["id", "sport_id", "is_duplicate_with", "manual_check_required"]:
+            if key in ["id", "sport_id", "is_duplicate_with", "manual_check_required_with"]:
                 continue
             elif key == "external_id":
                 value = getattr(self, key)
@@ -275,7 +275,7 @@ class Workout(Base):
         keys = self.__table__.columns.keys()
         list = []
         for key in keys:
-            if key in ["external_id", "sport_id", "is_duplicate_with", "manual_check_required"]:
+            if key in ["external_id", "sport_id", "is_duplicate_with", "manual_check_required_with"]:
                 continue
             elif key == "id":
                 list.append(getattr(self, "external_id"))
@@ -294,12 +294,56 @@ class Workout(Base):
                 keys[i] = "sportstype"
                 break
         keys.remove("is_duplicate_with")
-        keys.remove("manual_check_reqired")
+        keys.remove("manual_check_required_with")
         keys.remove("external_id")
         keys.remove("sport_id")
         return keys
 
+    def handle_duplicates(self, database):
+        '''
+        If a workout seems to be known in the database, for example because already imported from another source,
+        create a new leading workout and mark the others as duplicate.
+        Used attributes:
+            is_duplicate_with = Column(Integer)    => reference to the leading workout
+            manual_check_reqired = Column(Boolean) => if automated cleaning is not possible
+        '''
+        # return if this workout already has been checked
+        if self.is_duplicate_with or self.manual_check_required_with:
+            return
+
+        # return if this workout does not have start_time set, since the following checks are based on it
+        if not self.start_time or not self.duration_sec:
+            return
+
+        # potential duplicate if time is overlapping
+        # this workout                          |-----------------|
+        # 1st potential duplicate in db     |-----------------|
+        # 2nd potential duplicate in db     |------------------------|
+        # 3rd potential duplicate in db             |----------------|
+        # 4th potential duplicate in db             |---------|
+        # (Remark to line 2 of 1st filter: needed to use database functions, 
+        # because modifiers like timedelta do not work on sqlalchemy)
+        duplicates = database.session.query(Workout)\
+            .filter(or_(and_(Workout.start_time < self.start_time,
+                             func.strftime('%s', Workout.start_time) + Workout.duration_sec >= self.start_time.timestamp()),
+                        and_(Workout.start_time >= self.start_time,
+                             Workout.start_time < (self.start_time + datetime.timedelta(seconds=int(self.duration_sec))))))\
+            .filter(Workout.is_duplicate_with == None)\
+            .filter(Workout.manual_check_required_with == None)\
+            .filter(Workout.id != self.id)\
+            .all()
+
+        for duplicate in duplicates:
+            logging.debug("potential duplicate: {}".format(duplicate))
+            if duplicate.sport_id != self.sport_id:
+                # different sports -> manual_check_required_with
+                self.manual_check_required_with = duplicate.sport_id
+            else:
+                # same sports -> self and duplicate are real duplicates -> now select the most appropriate data
+                pass
+
     def add(self, database):
+        # don't add if this workout has already been added
         id = database.session.query(Workout.id) \
             .filter(Workout.external_id == self.external_id) \
             .filter(Workout.source == self.source) \
@@ -311,6 +355,7 @@ class Workout(Base):
             database.session.flush()
             logger.info("Adding new workout '{}' id {}, with sportstype {}".format(
                 self.name, self.id, self.sportstype_id))
+            self.handle_duplicates(database)
             return True
 
 
@@ -358,7 +403,7 @@ class WorkoutsDatabase:
             Duplicate detection:
                 - If workouts are overlapping in time, further checks are required
                     - If they are of the same sportstype, then they are duplicates
-                    - If they are of different sportstype, then "manual_check_required" will be set to True
+                    - If they are of different sportstype, then "manual_check_required_with" will be set
 
             Cleansing of duplicates:
                 1. create a new workout
@@ -376,18 +421,10 @@ class WorkoutsDatabase:
         number_of_duplicate_workouts = 0        
         workouts = self.session.query(Workout).all()
         for workout in workouts:
-            logger.debug('WORKOUT: {}'.format(workout))
             number_of_checked_workouts += 1
-            duplicates = self.session.query(Workout)\
-                .filter(Workout.start_time >= workout.start_time)\
-                .filter(Workout.start_time < (workout.start_time + datetime.timedelta(seconds=workout.duration_sec)))\
-                .filter(Workout.is_duplicate_with is not None)\
-                .filter(Workout.manual_check_reqired is not None)\
-                .filter(Workout.id != workout.id)
-            for duplicate in duplicates:
-                logger.debug('    DUPLICATE: {}'.format(duplicate))
-                number_of_duplicate_workouts +=1
- 
+            (a, b) = workout.mark_duplicates(self)
+            number_of_duplicate_workouts += a
+            number_of_combined_workouts += b
         logger.info('{} workouts checked, {} of them were duplicate, created {} combined workouts'\
             .format(number_of_checked_workouts,
                     number_of_duplicate_workouts,
