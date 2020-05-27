@@ -42,7 +42,9 @@ class JsonImporter(WorkoutImporter):
             continue
           elif key == "sportstype":
             sportstype = SportsType(name = record[key])
-            sportstype.add(db)
+            if record["name"]:
+              workout.name = record["name"]     # necessary for sportstype association
+            sportstype.add(workout, db)
             workout.sportstype_id = sportstype.id
             workout.sport_id = sportstype.sport_id
             continue

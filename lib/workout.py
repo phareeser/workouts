@@ -34,7 +34,7 @@ class Sport(Base):
         else:
             database.session.add(self)
             database.session.flush()
-            logger.info("Adding new sport '{}' id {}".format(self.name, self.id))
+            logger.info("Added new sport '{}' id {}".format(self.name, self.id))
             return True
 
     def __repr__(self):
@@ -89,7 +89,7 @@ class SportsType(Base):
         sport.add(database)
         self.sport_id = sport.id
 
-    def cleanup_sportstype(self):
+    def cleanup_sportstype(self, workout):
         if self.name.lower() in ['indoor_cycling', 'virtual_ride']:
             self.name = 'Indoor Cycling'
         elif self.name.lower() in ['cycling', 'road_biking']:
@@ -123,10 +123,18 @@ class SportsType(Base):
         elif self.name.lower() in ['surfing']:
             self.name = 'Surfing'
         elif self.name.lower() in ['other']:
-            self.name = 'Other'
+            if workout.name:
+                if workout.name == 'Yoga':
+                    self.name = 'Yoga'
+                if workout.name == 'Inline Hockey':
+                    self.name = 'Inline Skating'
+                if workout.name == 'Radfahren':
+                    self.name = 'Road Cycling'
+            else:
+                self.name = 'Other'
 
-    def add(self, database):
-        self.cleanup_sportstype()
+    def add(self, workout, database):
+        self.cleanup_sportstype(workout)
         self.associate_sport(database)
         id = database.session.query(SportsType.id).filter(
             SportsType.name == self.name).first()
@@ -141,7 +149,7 @@ class SportsType(Base):
             return True
 
     def __repr__(self):
-        return "({}) {} belongs to {}".format(self.id, self.name, self.sport_id)
+        return "({}) {} of type {}".format(self.id, self.name, self.sport_id)
 
 
 class Workout(Base):
@@ -248,7 +256,8 @@ class Workout(Base):
     max_avg_power_18000 = Column(Integer)
 
     def __repr__(self):
-        return "({}) {} from {} doing {} ({}) imported by {}".format(self.id, self.name, self.start_time, self.sportstype_id, self.sport_id, self.source)
+        return "{} | {} | {} | {} | {} | dup:{} | check:{} | "\
+            .format(self.id, self.source, self.name, self.start_time, self.sport_id, self.is_duplicate_with, self.manual_check_required_with)
 
     def as_dict(self, db):
         dict = {}
@@ -299,21 +308,49 @@ class Workout(Base):
         keys.remove("sport_id")
         return keys
 
+    def _merge_attributes(self, copied_workout):
+        '''
+        Merging attributes from copied_workout to self, 
+        if the attributes are not populated yet or seem odd for other reasons
+        '''
+        # returns a list of all workout attributes
+        keys = self.__table__.columns.keys()
+        for key in keys:
+            if key in ["id",
+                       "external_id",
+                       "is_duplicate_with",
+                       "manual_check_required_with",
+                      ]:
+                continue
+            elif getattr(self, key) == None:
+                setattr(self, key, getattr(copied_workout, key))
+
+
     def handle_duplicates(self, database):
         '''
         If a workout seems to be known in the database, for example because already imported from another source,
-        create a new leading workout and mark the others as duplicate.
+        create a new workout and mark the others as duplicate.
+        Populate the new workout with the most appropriate information of all duplicates 
         Used attributes:
             is_duplicate_with = Column(Integer)    => reference to the leading workout
             manual_check_reqired = Column(Boolean) => if automated cleaning is not possible
         '''
+        number_of_duplicates = 0
+        number_of_merged = 0
+        
+        # return if this workout is a merged workout
+        if self.source == "MERGED WORKOUT":
+            logger.debug("dup check - no check, since this workout is merged: {}".format(self))
+            return (number_of_duplicates, number_of_merged)
+
         # return if this workout already has been checked
         if self.is_duplicate_with or self.manual_check_required_with:
-            return
+            logger.debug("dup check - no check, since this workout is marked: {}".format(self))
+            return (number_of_duplicates, number_of_merged)
 
         # return if this workout does not have start_time set, since the following checks are based on it
         if not self.start_time or not self.duration_sec:
-            return
+            return (number_of_duplicates, number_of_merged)
 
         # potential duplicate if time is overlapping
         # this workout                          |-----------------|
@@ -322,10 +359,11 @@ class Workout(Base):
         # 3rd potential duplicate in db             |----------------|
         # 4th potential duplicate in db             |---------|
         # (Remark to line 2 of 1st filter: needed to use database functions, 
-        # because modifiers like timedelta do not work on sqlalchemy)
+        # because modifiers like timedelta do not work with sqlalchemy sql attributes)
+        # TODO handle timezones (needed for sqlite strftime)
         duplicates = database.session.query(Workout)\
             .filter(or_(and_(Workout.start_time < self.start_time,
-                             func.strftime('%s', Workout.start_time) + Workout.duration_sec >= self.start_time.timestamp()),
+                             func.strftime('%s', Workout.start_time, 'utc') + Workout.duration_sec >= self.start_time.timestamp()),
                         and_(Workout.start_time >= self.start_time,
                              Workout.start_time < (self.start_time + datetime.timedelta(seconds=int(self.duration_sec))))))\
             .filter(Workout.is_duplicate_with == None)\
@@ -333,14 +371,64 @@ class Workout(Base):
             .filter(Workout.id != self.id)\
             .all()
 
+        if len(duplicates) == 0:
+            return (number_of_duplicates, number_of_merged)
+
+        # find overlapping workouts of different sports -> set manual_check_required_with
         for duplicate in duplicates:
-            logging.debug("potential duplicate: {}".format(duplicate))
             if duplicate.sport_id != self.sport_id:
-                # different sports -> manual_check_required_with
-                self.manual_check_required_with = duplicate.sport_id
-            else:
-                # same sports -> self and duplicate are real duplicates -> now select the most appropriate data
-                pass
+                self.manual_check_required_with = duplicate.id
+                logger.debug("dup check - workout marked to be checked: {}".format(duplicate))
+                duplicates.remove(duplicate)
+        if len(duplicates) == 0:
+            return (number_of_duplicates, number_of_merged)
+
+        # find overlapping workouts of same sports (they are duplicate workouts) -> now find the leading workout
+        leading_workout = None
+        # Step 1: if one of the duplicates is a previously merged one, use it as the leading workout
+        for duplicate in duplicates:
+            if duplicate.source and duplicate.source == "MERGED WORKOUT":
+                leading_workout = duplicate
+        # Step 2: else if one of the duplicates is from Zwift, prefer it as the leading workout
+        if not leading_workout:
+            for duplicate in duplicates:
+                if duplicate.name and "Zwift" in duplicate.name:
+                    leading_workout = duplicate
+        # Step 3: else if one of the duplicates is a Garmin import, prefer it as the leading workout
+        if not leading_workout:
+            for duplicate in duplicates:
+                if duplicate.source and "Garmin" in duplicate.source:
+                    leading_workout = duplicate
+        # Step 4: else use this workout as the leading workout
+        if not leading_workout:
+            leading_workout = self
+        logger.debug("dup check - leading workout is: {}".format(leading_workout))
+
+        # create a new workout that will be treated as the leading one. Mark the duplicates 
+        if leading_workout.source == "MERGED WORKOUT":
+            merged_workout = leading_workout
+        else:
+            merged_workout = Workout(source="MERGED WORKOUT", external_id=datetime.datetime.now().timestamp())
+            merged_workout._merge_attributes(leading_workout)
+            logger.debug("dup check - merged workout with leading: {}".format(merged_workout))
+            merged_workout.add(database)
+            leading_workout.is_duplicate_with = merged_workout.id
+            number_of_merged += 1
+        if self is not leading_workout:
+            merged_workout._merge_attributes(self)
+            logger.debug("dup check - merged workout with self: {}".format(merged_workout))
+        self.is_duplicate_with = merged_workout.id
+        number_of_duplicates += 1
+        for duplicate in duplicates:
+            if duplicate is leading_workout:
+                continue
+            merged_workout._merge_attributes(duplicate)
+            logger.debug("dup check - merged workout duplicate: {}".format(merged_workout))
+            duplicate.is_duplicate_with = merged_workout.id
+            number_of_duplicates += 1
+            logger.debug("dup check - duplicate workout marked: {}".format(duplicate))
+        return (number_of_duplicates, number_of_merged)
+
 
     def add(self, database):
         # don't add if this workout has already been added
@@ -353,8 +441,7 @@ class Workout(Base):
         else:
             database.session.add(self)
             database.session.flush()
-            logger.info("Adding new workout '{}' id {}, with sportstype {}".format(
-                self.name, self.id, self.sportstype_id))
+            logger.info("Added new workout {}".format(self))
             self.handle_duplicates(database)
             return True
 
@@ -415,17 +502,16 @@ class WorkoutsDatabase:
                 5. update the new workout with the attributes of the not preferred workout, if this attribute is not yet set
             
         '''
-    
         number_of_checked_workouts = 0
-        number_of_combined_workouts = 0
+        number_of_merged_workouts = 0
         number_of_duplicate_workouts = 0        
         workouts = self.session.query(Workout).all()
         for workout in workouts:
             number_of_checked_workouts += 1
-            (a, b) = workout.mark_duplicates(self)
+            (a, b) = workout.handle_duplicates(self)
             number_of_duplicate_workouts += a
-            number_of_combined_workouts += b
-        logger.info('{} workouts checked, {} of them were duplicate, created {} combined workouts'\
+            number_of_merged_workouts += b
+        logger.info('{} workouts checked, {} of them were duplicate, created {} merged workouts'\
             .format(number_of_checked_workouts,
                     number_of_duplicate_workouts,
-                    number_of_combined_workouts,))
+                    number_of_merged_workouts,))

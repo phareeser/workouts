@@ -92,14 +92,14 @@ class GarminImporter(WorkoutImporter):
     workout = Workout()
     workout.source = "Garmin"
     workout.external_id = record['activityId'] 
+    workout.name = record['activityName']
+    workout.description = record['description']
 
     sportstype = SportsType(name = record['activityType']['typeKey'])
-    sportstype.add(db)
+    sportstype.add(workout, db)
     workout.sportstype_id = sportstype.id
     workout.sport_id = sportstype.sport_id
 
-    workout.name = record['activityName']
-    workout.description = record['description']
     if record['minTemperature']:
       workout.min_temperature = int(record['minTemperature'])
     if record['maxTemperature']:
