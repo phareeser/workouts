@@ -53,8 +53,9 @@ class TestSportsType(unittest.TestCase):
 
     def test_add_sportstype(self):
         number_of_sportstypes = self.db.session.query(SportsType.id).count()
-        sportstype = SportsType(name = "TEST_SPORTSTYPE")
-        sportstype.add(self.db)
+        sportstype = SportsType(name="TEST_SPORTSTYPE")
+        workout = Workout()
+        sportstype.add(workout, self.db)
         self.assertEqual(number_of_sportstypes + 1,
                          self.db.session.query(SportsType.id).count())
         self.assertEqual("TEST_SPORTSTYPE", self.db.session.query(
@@ -69,8 +70,9 @@ class TestSportsType(unittest.TestCase):
         self.assertEqual(sportstype.sport_id, self.db.session.query(Sport.id).filter(Sport.name == "New Type").first()[0])
 
     def test_cleanup_sportstype(self):
-        sportstype = SportsType(name = "RuNnInG")
-        sportstype.cleanup_sportstype()
+        sportstype = SportsType(name="RuNnInG")
+        workout = Workout()
+        sportstype.cleanup_sportstype(workout)
         self.assertEqual(sportstype.name, "Running")
 
 
@@ -95,8 +97,9 @@ class TestWorkout(unittest.TestCase):
 
     def test_workout_as_dict(self):
         workout = Workout(name = "TEST_WORKOUT")
-        sportstype = SportsType(name = "TEST_SPORTSTYPE")
-        sportstype.add(self.db)
+        sportstype = SportsType(name="TEST_SPORTSTYPE")
+        workout = Workout()
+        sportstype.add(workout, self.db)
         workout.sportstype_id = sportstype.id
         workout.sport_id = sportstype.sport_id
         workout.add(self.db)
@@ -112,7 +115,7 @@ class TestWorkout(unittest.TestCase):
     def test_workout_as_list(self):
         workout = Workout(name="TEST_WORKOUT", start_time=datetime.strptime("2020-05-05 20:00:00", "%Y-%m-%d %H:%M:%S"))
         sportstype = SportsType(name="TEST_SPORTSTYPE")
-        sportstype.add(self.db)
+        sportstype.add(workout, self.db)
         workout.sportstype_id = sportstype.id
         workout.sport_id = sportstype.sport_id
         workout.add(self.db)
