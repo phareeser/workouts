@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class CsvExporter(WorkoutExporter):
+  """
+  Exports workouts from database to CSV file
+  """
   def __init__(self, filename):
     logger.info("csv exporter initializing ...")
     self.csv = None

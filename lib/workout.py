@@ -16,7 +16,7 @@ class Sport(Base):
     """
     Class manages Sport model
     Sport is the generic description of a SportsType: e.g. Sport is 'Cycling' for SportsType 'Montainbiking'
-    rferenced by models SportsType and Workout
+    Sport is referenced by models SportsType and Workout
     - 'add' a sport record to the database
     """
     __tablename__ = 'sports'
@@ -26,12 +26,17 @@ class Sport(Base):
     workouts = relationship('Workout')
 
     def add(self, database):
+        """
+        adds a new sport to the database
+        """
         id = database.session.query(Sport.id).filter(
             Sport.name == self.name).first()
         if id:
+            # this sport already exists
             self.id = id[0]
             return False
         else:
+            # create a new one and flush it immediately in order to update the id
             database.session.add(self)
             database.session.flush()
             logger.info("Added new sport '{}' id {}".format(self.name, self.id))
@@ -58,6 +63,9 @@ class SportsType(Base):
     workouts = relationship("Workout")
 
     def associate_sport(self, database):
+        """
+        identifies the generic sport based on the given specific sportstype and creates a new sport record if not existing
+        """
         sport = Sport()
         if self.name.lower() in ['indoor_cycling', 'indoor cycling', 'virtual_ride', 'cycling', 'road_biking', 'outdoor_cycling', 'road cycling', 'cross cycling', 'offroad cycling', 'mountain_biking', 'mountain biking']:
             sport.name = "Cycling"
@@ -90,6 +98,9 @@ class SportsType(Base):
         self.sport_id = sport.id
 
     def cleanup_sportstype(self, workout):
+        """ 
+        unifies the sportstype names if different terms have the same meaning
+        """
         if self.name.lower() in ['indoor_cycling', 'virtual_ride']:
             self.name = 'Indoor Cycling'
         elif self.name.lower() in ['cycling', 'road_biking']:
@@ -134,6 +145,9 @@ class SportsType(Base):
                 self.name = 'Other'
 
     def add(self, workout, database):
+        """
+        adds a new sportstype to the database
+        """
         self.cleanup_sportstype(workout)
         self.associate_sport(database)
         id = database.session.query(SportsType.id).filter(
@@ -169,23 +183,27 @@ class Workout(Base):
     source = Column(String(32))
     external_id = Column(Integer)
 
-    # organisational
+    # organizational
     is_duplicate_with = Column(Integer)
     manual_check_required_with = Column(Integer)
 
     # sportstype
     sportstype_id = Column(Integer, ForeignKey('sportstypes.id'))
     sport_id = Column(Integer, ForeignKey('sports.id'))
+    
     # description
     name = Column(String)
     description = Column(String)
+    
     # time
     start_time = Column(DateTime)
     duration_sec = Column(Integer)
     moving_duration_sec = Column(Integer)
+    
     # conditions
     min_temperature = Column(Integer)
     max_temperature = Column(Integer)
+    
     # key performance indicators
     distance_m = Column(Integer)
     average_speed_m_per_sec = Column(Float)
@@ -198,11 +216,13 @@ class Workout(Base):
     norm_power = Column(Integer)
     elevation_gain_m = Column(Integer)
     elevation_loss_m = Column(Integer)
+    
     # training effect
     aerobic_training_effect = Column(Float)
     anaerobic_training_effect = Column(Float)
     training_stress_score = Column(Float)
     intensity_factor = Column(Float)
+    
     # cadences
     average_running_cadence_steps_per_min = Column(Integer)
     max_running_cadence_steps_per_min = Column(Integer)
@@ -210,6 +230,7 @@ class Workout(Base):
     max_biking_cadence_rev_per_min = Column(Integer)
     average_swim_cadence_strokes_per_min = Column(Integer)
     max_swim_cadence_strokes_per_min = Column(Integer)
+    
     # running specific
     left_balance = Column(Float)
     right_balance = Column(Float)
@@ -221,6 +242,7 @@ class Workout(Base):
     max_fractional_cadence = Column(Integer)
     avg_vertical_ratio = Column(Float)
     avg_ground_contact_balance = Column(Float)
+    
     # swimming specific
     average_swolf = Column(Integer)
     active_lengths = Column(Integer)
@@ -233,6 +255,7 @@ class Workout(Base):
     max_stroke_cadence = Column(Integer)
     avg_strokes = Column(Float)
     min_strokes = Column(Float)
+    
     # fitness level
     vo2_max_value = Column(Integer)
     lactate_threshold_bpm = Column(Integer)
@@ -256,10 +279,13 @@ class Workout(Base):
     max_avg_power_18000 = Column(Integer)
 
     def __repr__(self):
-        return "{} | {} | {} | {} | {} | dup:{} | check:{} | "\
+        return "{} | {} | {} | {} | {} | duplicate:{} | 2bchecked:{} | "\
             .format(self.id, self.source, self.name, self.start_time, self.sport_id, self.is_duplicate_with, self.manual_check_required_with)
 
     def as_dict(self, db):
+        """
+        returns a workout as dictionary
+        """
         dict = {}
         for column in self.__table__.columns:
             key = column.name
@@ -280,7 +306,9 @@ class Workout(Base):
         return dict
 
     def as_list(self, db):
-        # returns a list of all workout attributes
+        """
+        returns a workout as list
+        """
         keys = self.__table__.columns.keys()
         list = []
         for key in keys:
@@ -297,6 +325,9 @@ class Workout(Base):
 
     @classmethod
     def header(cls, database):
+        """
+        returns a list of all attributes of a workout
+        """
         keys = cls.__table__.columns.keys()
         for i in range(len(keys)):
             if keys[i] == "sportstype_id":
@@ -308,12 +339,11 @@ class Workout(Base):
         keys.remove("sport_id")
         return keys
 
-    def _merge_attributes(self, copied_workout):
-        '''
-        Merging attributes from copied_workout to self, 
+    def _merge_attributes(self, workout):
+        """
+        Merging attributes from workout to self, 
         if the attributes are not populated yet or seem odd for other reasons
-        '''
-        # returns a list of all workout attributes
+        """
         keys = self.__table__.columns.keys()
         for key in keys:
             if key in ["id",
@@ -323,18 +353,19 @@ class Workout(Base):
                       ]:
                 continue
             elif getattr(self, key) == None:
-                setattr(self, key, getattr(copied_workout, key))
+                # copy attribute if empty; else keep existing 
+                setattr(self, key, getattr(workout, key))
 
 
     def handle_duplicates(self, database):
-        '''
+        """
         If a workout seems to be known in the database, for example because already imported from another source,
         create a new workout and mark the others as duplicate.
         Populate the new workout with the most appropriate information of all duplicates 
         Used attributes:
             is_duplicate_with = Column(Integer)    => reference to the leading workout
-            manual_check_reqired = Column(Boolean) => if automated cleaning is not possible
-        '''
+            manual_check_reqired = Column(Boolean) => set if automatic cleaning is not possible
+        """
         number_of_duplicates = 0
         number_of_merged = 0
         
@@ -409,18 +440,20 @@ class Workout(Base):
             merged_workout = leading_workout
         else:
             merged_workout = Workout(source="MERGED WORKOUT", external_id=datetime.datetime.now().timestamp())
+            number_of_merged += 1
             merged_workout._merge_attributes(leading_workout)
             logger.debug("dup check - merged workout with leading: {}".format(merged_workout))
             merged_workout.add(database)
             leading_workout.is_duplicate_with = merged_workout.id
-            number_of_merged += 1
+            number_of_duplicates += 1
         if self is not leading_workout:
             merged_workout._merge_attributes(self)
             logger.debug("dup check - merged workout with self: {}".format(merged_workout))
-        self.is_duplicate_with = merged_workout.id
-        number_of_duplicates += 1
+            self.is_duplicate_with = merged_workout.id
+            number_of_duplicates += 1
         for duplicate in duplicates:
             if duplicate is leading_workout:
+                # already merged above
                 continue
             merged_workout._merge_attributes(duplicate)
             logger.debug("dup check - merged workout duplicate: {}".format(merged_workout))
@@ -431,12 +464,15 @@ class Workout(Base):
 
 
     def add(self, database):
-        # don't add if this workout has already been added
+        """ 
+        add a workout to the database
+        """
         id = database.session.query(Workout.id) \
             .filter(Workout.external_id == self.external_id) \
             .filter(Workout.source == self.source) \
             .first()
         if id:
+            # don't add if this workout has already been added
             return False
         else:
             database.session.add(self)
@@ -483,25 +519,10 @@ class WorkoutsDatabase:
             print(workout)
 
     def check(self):
-        ''' Database cleanup
-            Check for duplicate workouts
-            If duplicates are detected, use the most reliable information and mark the duplicate workouts 
-
-            Duplicate detection:
-                - If workouts are overlapping in time, further checks are required
-                    - If they are of the same sportstype, then they are duplicates
-                    - If they are of different sportstype, then "manual_check_required_with" will be set
-
-            Cleansing of duplicates:
-                1. create a new workout
-                2. mark the original workout as duplicates and add a reference in "is_duplicate_with"
-                3. decide for the more reliable record:
-                    1. source == Garmin is preferred
-                    2. the workout with the better average speed is preferred
-                4. update the new workout with the attributes of the preferred duplicate workout
-                5. update the new workout with the attributes of the not preferred workout, if this attribute is not yet set
-            
-        '''
+        """ 
+        Database cleanup
+        Check whole database for duplicate workouts and clean up using Workout.handle_duplicates()
+        """
         number_of_checked_workouts = 0
         number_of_merged_workouts = 0
         number_of_duplicate_workouts = 0        

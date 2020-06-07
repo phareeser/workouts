@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class JsonExporter(WorkoutExporter):
+  """
+  Exports workouts from a database to a json file
+  """
   def __init__(self, filename):
     logger.info("json exporter initializing ...")
     self.json = None

@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class CsvImporter(WorkoutImporter):
+    """
+    Imports workouts from CSV file to database
+    """
     def __init__(self, filename):
         logger.info("csv importer initializing ...")
         self.csv = None
