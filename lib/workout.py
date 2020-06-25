@@ -8,6 +8,7 @@ from sqlalchemy import Column, String, Integer, DateTime, Float, Boolean
 from sqlalchemy import ForeignKey
 from sqlalchemy import create_engine, or_, and_, func
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import exc
 
 Base = declarative_base()
 logger = logging.getLogger(__name__)
@@ -29,6 +30,10 @@ class Sport(Base):
         """
         adds a new sport to the database
         """
+        if not database.session:
+            logger.error("no database session")
+            return False
+
         id = database.session.query(Sport.id).filter(
             Sport.name == self.name).first()
         if id:
@@ -37,8 +42,12 @@ class Sport(Base):
             return False
         else:
             # create a new one and flush it immediately in order to update the id
-            database.session.add(self)
-            database.session.flush()
+            try:
+                database.session.add(self)
+                database.session.flush()
+            except exc.SQLAlchemyError as e:
+                logger.error("Database error: {}".format(e.args))
+                return False
             logger.info("Added new sport '{}' id {}".format(self.name, self.id))
             return True
 
@@ -148,6 +157,10 @@ class SportsType(Base):
         """
         adds a new sportstype to the database
         """
+        if not database.session:
+            logger.error("no database session")
+            return False
+
         self.cleanup_sportstype(workout)
         self.associate_sport(database)
         id = database.session.query(SportsType.id).filter(
@@ -156,14 +169,18 @@ class SportsType(Base):
             self.id = id[0]
             return False
         else:
-            database.session.add(self)
-            database.session.flush()
+            try:
+                database.session.add(self)
+                database.session.flush()
+            except exc.SQLAlchemyError as e:
+                logger.error("Database error: {}".format(e.args))
+                return False
             logger.info("Adding new sportstype '{}' id {} of sport {}".format(
                 self.name, self.id, self.sport_id))
             return True
 
     def __repr__(self):
-        return "({}) {} of type {}".format(self.id, self.name, self.sport_id)
+        return "({}) {} of sport {}".format(self.id, self.name, self.sport_id)
 
 
 class Workout(Base):
@@ -279,7 +296,7 @@ class Workout(Base):
     max_avg_power_18000 = Column(Integer)
 
     def __repr__(self):
-        return "{} | {} | {} | {} | {} | duplicate:{} | 2bchecked:{} | "\
+        return "({}) {} | {} | {} | {} | duplicate:{} | 2bchecked:{}"\
             .format(self.id, self.source, self.name, self.start_time, self.sport_id, self.is_duplicate_with, self.manual_check_required_with)
 
     def as_dict(self, db):
@@ -287,6 +304,10 @@ class Workout(Base):
         returns a workout as dictionary
         """
         dict = {}
+        if not db.session:
+            logger.error("no database session")
+            return dict
+
         for column in self.__table__.columns:
             key = column.name
             if key in ["id", "sport_id", "is_duplicate_with", "manual_check_required_with"]:
@@ -311,6 +332,10 @@ class Workout(Base):
         """
         keys = self.__table__.columns.keys()
         list = []
+        if not db.session:
+            logger.error("no database session")
+            return list
+
         for key in keys:
             if key in ["external_id", "sport_id", "is_duplicate_with", "manual_check_required_with"]:
                 continue
@@ -324,7 +349,7 @@ class Workout(Base):
         return list
 
     @classmethod
-    def header(cls, database):
+    def header(cls):
         """
         returns a list of all attributes of a workout
         """
@@ -368,7 +393,10 @@ class Workout(Base):
         """
         number_of_duplicates = 0
         number_of_merged = 0
-        
+        if not database.session:
+            logger.error("no database session")
+            return (number_of_duplicates, number_of_merged)
+
         # return if this workout is a merged workout
         if self.source == "MERGED WORKOUT":
             logger.debug("dup check - no check, since this workout is merged: {}".format(self))
@@ -446,11 +474,13 @@ class Workout(Base):
             merged_workout.add(database)
             leading_workout.is_duplicate_with = merged_workout.id
             number_of_duplicates += 1
+
         if self is not leading_workout:
             merged_workout._merge_attributes(self)
             logger.debug("dup check - merged workout with self: {}".format(merged_workout))
             self.is_duplicate_with = merged_workout.id
             number_of_duplicates += 1
+
         for duplicate in duplicates:
             if duplicate is leading_workout:
                 # already merged above
@@ -475,8 +505,12 @@ class Workout(Base):
             # don't add if this workout has already been added
             return False
         else:
-            database.session.add(self)
-            database.session.flush()
+            try:
+                database.session.add(self)
+                database.session.flush()
+            except exc.SQLAlchemyError as e:
+                logger.error("Database error: {}".format(e.args))
+                return False
             logger.info("Added new workout {}".format(self))
             self.handle_duplicates(database)
             return True
@@ -491,47 +525,72 @@ class WorkoutsDatabase:
     - show all records of the database
     - cleanup database
     """
-    def __init__(self, database):
-        engine = create_engine('sqlite:///{}'.format(database), echo=False)
-        logger.info("connecting to {}".format(database))
-        Session = sessionmaker(bind=engine)
-        Base.metadata.create_all(engine)
-        self.session = Session()
 
-    def close(self):
-        self.session.commit()
-        self.session.close()
+    def __init__(self, database):
+        self.session = False
+        self.database = database
+    
+    def create_session(self):
+        engine = create_engine('sqlite:///{}'.format(self.database), echo=False)
+        logger.info("connecting to {}".format(self.database))
+        Session = sessionmaker(bind=engine)
+        try:
+            Base.metadata.create_all(engine)
+        except exc.DatabaseError as e:
+            logger.error("Database error: {}".format(e.args))
+            return False
+        else:
+            self.session = Session()
+        return True
+
+    def close_session(self):
+        if self.session:
+            try:
+                self.session.commit()
+                self.session.close()
+            except exc.SQLAlchemyError as e:
+                logger.error("Database error: {}".format(e.args))
+        self.session = False
 
     def showall(self):
-        print("SPORTS:")
-        sports = self.session.query(Sport).all()
-        for sport in sports:
-            print(sport)
-
-        print("SPORTSTYPES:")
-        sportstypes = self.session.query(SportsType).all()
-        for sportstype in sportstypes:
-            print(sportstype)
+        if not self.session:
+            print("no database")
 
         print("WORKOUTS:")
         workouts = self.session.query(Workout).all()
         for workout in workouts:
             print(workout)
 
+        print("SPORTSTYPES:")
+        sportstypes = self.session.query(SportsType).all()
+        for sportstype in sportstypes:
+            print(sportstype)
+
+        print("SPORTS:")
+        sports = self.session.query(Sport).all()
+        for sport in sports:
+            print(sport)
+
     def check(self):
         """ 
         Database cleanup
         Check whole database for duplicate workouts and clean up using Workout.handle_duplicates()
         """
+        if not self.session:
+            print("no database")
+
         number_of_checked_workouts = 0
         number_of_merged_workouts = 0
-        number_of_duplicate_workouts = 0        
+        number_of_duplicate_workouts = 0
         workouts = self.session.query(Workout).all()
         for workout in workouts:
             number_of_checked_workouts += 1
-            (a, b) = workout.handle_duplicates(self)
-            number_of_duplicate_workouts += a
-            number_of_merged_workouts += b
+            if workout.is_duplicate_with:
+                number_of_duplicate_workouts += 1
+            else:
+                (a, b) = workout.handle_duplicates(self)
+                number_of_duplicate_workouts += a
+                number_of_merged_workouts += b
         logger.info('{} workouts checked, {} of them were duplicate, created {} merged workouts'\
             .format(number_of_checked_workouts,
                     number_of_duplicate_workouts,

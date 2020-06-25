@@ -17,6 +17,7 @@ class TestWorkoutsDatabase(unittest.TestCase):
 
     def test_create_session(self): 
         db = WorkoutsDatabase(self.DB_NAME)
+        db.create_session()
         self.assertIsNotNone(db)
         os.remove(self.DB_NAME)
 
@@ -26,9 +27,10 @@ class TestSport(unittest.TestCase):
 
     def setUp(self):
         self.db = WorkoutsDatabase(self.DB_NAME)
+        self.db.create_session()
 
     def tearDown(self):
-        self.db.close()
+        self.db.close_session()
         os.remove(self.DB_NAME)
 
     def test_add_sport(self):
@@ -46,9 +48,10 @@ class TestSportsType(unittest.TestCase):
 
     def setUp(self):
         self.db = WorkoutsDatabase(self.DB_NAME)
+        self.db.create_session()
 
     def tearDown(self):
-        self.db.close()
+        self.db.close_session()
         os.remove(self.DB_NAME)
 
     def test_add_sportstype(self):
@@ -81,9 +84,10 @@ class TestWorkout(unittest.TestCase):
 
     def setUp(self):
         self.db = WorkoutsDatabase(self.DB_NAME)
+        self.db.create_session()
 
     def tearDown(self):
-        self.db.close()
+        self.db.close_session()
         os.remove(self.DB_NAME)
 
     def test_add_workout(self):

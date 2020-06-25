@@ -78,6 +78,7 @@ class GarminImporter(WorkoutImporter):
         logger.info("garmin importer creating session ...")
         self.session = requests.Session()
         self._authenticate()
+        return True
 
     def close_session(self):
         logger.info("garmin importer closing session ...")

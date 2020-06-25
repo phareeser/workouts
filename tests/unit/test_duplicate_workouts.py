@@ -13,12 +13,13 @@ class TestDuplicateWorkouts(unittest.TestCase):
 
     def setUp(self):
         self.db = WorkoutsDatabase(self.DB_NAME)
+        self.db.create_session()
 
     def tearDown(self):
         #workouts = self.db.session.query(Workout).all()
         #for workout in workouts:
         #    print("all workouts after test: {}".format(workout))
-        self.db.close()
+        self.db.close_session()
         os.remove(self.DB_NAME)
 
     def test_duplicate_workouts(self):
@@ -45,8 +46,7 @@ class TestDuplicateWorkouts(unittest.TestCase):
         workout = Workout(external_id=id_counter,
                           sportstype_id=1,
                           sport_id=1,
-                          start_time=datetime.strptime(
-                              "2020-05-21 19:58:00", "%Y-%m-%d %H:%M:%S"),
+                          start_time=datetime.strptime("2020-05-21 19:58:00", "%Y-%m-%d %H:%M:%S"),
                           duration_sec=600)
         workout.add(self.db)
         number_of_workouts_after = self.db.session.query(Workout.id).count()

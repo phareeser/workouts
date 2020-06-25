@@ -10,13 +10,14 @@ class TestImportCSV(unittest.TestCase):
 
     def setUp(self):
         self.db = WorkoutsDatabase("testdb")
+        self.db.create_session()
         self.json = JsonImporter(os.path.join(os.path.dirname(
             os.path.abspath(__file__)), "./sample.json"))
         self.json.create_session()
 
     def tearDown(self):
         self.json.close_session()
-        self.db.close()
+        self.db.close_session()
         os.remove("testdb")
 
     def test_import(self):

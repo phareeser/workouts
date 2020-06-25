@@ -1,4 +1,7 @@
 workouts*.db
+fullload.db
 workouts*.json
+workouts*.csv
+db/*
 __pycache__
 .vscode
