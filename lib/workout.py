@@ -397,11 +397,6 @@ class Workout(Base):
             logger.error("no database session")
             return (number_of_duplicates, number_of_merged)
 
-        # return if this workout is a merged workout
-        if self.source == "MERGED WORKOUT":
-            logger.debug("dup check - no check, since this workout is merged: {}".format(self))
-            return (number_of_duplicates, number_of_merged)
-
         # return if this workout already has been checked
         if self.is_duplicate_with or self.manual_check_required_with:
             logger.debug("dup check - no check, since this workout is marked: {}".format(self))
@@ -427,10 +422,9 @@ class Workout(Base):
                              Workout.start_time < (self.start_time + datetime.timedelta(seconds=int(self.duration_sec))))))\
             .filter(Workout.is_duplicate_with == None)\
             .filter(Workout.manual_check_required_with == None)\
-            .filter(Workout.id != self.id)\
             .all()
 
-        if len(duplicates) == 0:
+        if len(duplicates) <= 1: 
             return (number_of_duplicates, number_of_merged)
 
         # find overlapping workouts of different sports -> set manual_check_required_with
@@ -439,7 +433,7 @@ class Workout(Base):
                 self.manual_check_required_with = duplicate.id
                 logger.debug("dup check - workout marked to be checked: {}".format(duplicate))
                 duplicates.remove(duplicate)
-        if len(duplicates) == 0:
+        if len(duplicates) <= 1: 
             return (number_of_duplicates, number_of_merged)
 
         # find overlapping workouts of same sports (they are duplicate workouts) -> now find the leading workout
@@ -448,20 +442,26 @@ class Workout(Base):
         for duplicate in duplicates:
             if duplicate.source and duplicate.source == "MERGED WORKOUT":
                 leading_workout = duplicate
+                logger.debug("Found leading workout in step 1: {}".format(leading_workout))
+                break
         # Step 2: else if one of the duplicates is from Zwift, prefer it as the leading workout
         if not leading_workout:
             for duplicate in duplicates:
                 if duplicate.name and "Zwift" in duplicate.name:
                     leading_workout = duplicate
+                    logger.debug("Found leading workout in step 2: {}".format(leading_workout))
+                    break
         # Step 3: else if one of the duplicates is a Garmin import, prefer it as the leading workout
         if not leading_workout:
             for duplicate in duplicates:
                 if duplicate.source and "Garmin" in duplicate.source:
                     leading_workout = duplicate
+                    logger.debug("Found leading workout in step 3: {}".format(leading_workout))
+                    break
         # Step 4: else use this workout as the leading workout
         if not leading_workout:
             leading_workout = self
-        logger.debug("dup check - leading workout is: {}".format(leading_workout))
+            logger.debug("Found leading workout in step 4: {}".format(leading_workout))
 
         # create a new workout that will be treated as the leading one. Mark the duplicates 
         if leading_workout.source == "MERGED WORKOUT":
@@ -475,21 +475,19 @@ class Workout(Base):
             leading_workout.is_duplicate_with = merged_workout.id
             number_of_duplicates += 1
 
-        if self is not leading_workout:
-            merged_workout._merge_attributes(self)
-            logger.debug("dup check - merged workout with self: {}".format(merged_workout))
-            self.is_duplicate_with = merged_workout.id
-            number_of_duplicates += 1
-
         for duplicate in duplicates:
             if duplicate is leading_workout:
                 # already merged above
+                continue
+            if duplicate.is_duplicate_with == merged_workout.id:
+                # already merged
                 continue
             merged_workout._merge_attributes(duplicate)
             logger.debug("dup check - merged workout duplicate: {}".format(merged_workout))
             duplicate.is_duplicate_with = merged_workout.id
             number_of_duplicates += 1
             logger.debug("dup check - duplicate workout marked: {}".format(duplicate))
+
         return (number_of_duplicates, number_of_merged)
 
 

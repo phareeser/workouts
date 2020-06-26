@@ -21,7 +21,7 @@ class CsvImporter(WorkoutImporter):
     def create_session(self):
         logger.info("csv importer creating session ...")
         try:
-            self.csv = open(self.filename, "r")
+            self.csv = open(self.filename, "r", encoding='utf-8', newline='')
         except FileNotFoundError:
             logger.error("csv input file not found")
             return False
@@ -49,15 +49,8 @@ class CsvImporter(WorkoutImporter):
         workouts = csv.DictReader(self.csv)
         # TODO check if header is correct
 
-
-        ################################################################
-        counter = 0
-
         if self.csv:
             for record in workouts:
-                counter += 1
-                if counter > 3:
-                    break
                 logger.debug('CSV record: {}'.format(record))
                 workout = Workout()
                 total_fetched_workouts += 1
