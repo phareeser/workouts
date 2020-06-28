@@ -593,3 +593,118 @@ class WorkoutsDatabase:
             .format(number_of_checked_workouts,
                     number_of_duplicate_workouts,
                     number_of_merged_workouts,))
+
+    def create_sample(self):
+        workout = Workout(external_id = 1,\
+                          source = "Sample",
+                          name="Long Road out of Eden", 
+                          description="long lasting", 
+                          min_temperature = 29, 
+                          max_temperature=30, 
+                          start_time=datetime.datetime.strptime("2020-05-04 12:00:00", "%Y-%m-%d %H:%M:%S"),
+                          duration_sec = 7200, 
+                          moving_duration_sec=7100, 
+                          distance_m = 64000,
+                          average_speed_m_per_sec=6.123, 
+                          max_speed_m_per_sec=9.993, 
+                          elevation_gain_m = 100, 
+                          elevation_loss_m = 100, 
+                          calories = 999, 
+                          average_hr=141, 
+                          max_hr=158, 
+                          avg_power=157, 
+                          max_power=326,
+                          norm_power=184,
+                          aerobic_training_effect=4.2,
+                          anaerobic_training_effect=1.0,
+                          training_stress_score=50.7,
+                          intensity_factor=0.805,
+                          average_biking_cadence_rev_per_min=82,
+                          max_biking_cadence_rev_per_min=104,
+                          strokes=3433,
+                          vo2_max_value=44,
+                          lactate_threshold_bpm=158,
+                          max_ftp=None,
+                          max_20_min_power=244,
+                          max_avg_power_1=426,
+                          max_avg_power_2=406,
+                          max_avg_power_5=392,
+                          max_avg_power_10=290,
+                          max_avg_power_20=253,
+                          max_avg_power_30=240,
+                          max_avg_power_60=231,
+                          max_avg_power_120=227,
+                          max_avg_power_300=222,
+                          max_avg_power_600=216,
+                          max_avg_power_1200=204,
+                          max_avg_power_1800=188,
+                          max_avg_power_3600=None,
+                          max_avg_power_7200=None,
+                          max_avg_power_18000=None,
+                         )  
+        sportstype=SportsType(name="Road Cycling")
+        sportstype.add(workout, self)
+        workout.sportstype_id = sportstype.id
+        workout.sport_id = sportstype.sport_id
+        workout.add(self)
+
+        workout = Workout(external_id=2,
+                          source = "Sample",
+                          name="Jog through the Forrest", 
+                          description="easy job", 
+                          min_temperature = 20, 
+                          max_temperature=22, 
+                          start_time=datetime.datetime.strptime("2020-05-03 12:00:00", "%Y-%m-%d %H:%M:%S"),
+                          duration_sec = 3600, 
+                          moving_duration_sec=3599, 
+                          distance_m = 10000,
+                          average_speed_m_per_sec=2.901, 
+                          max_speed_m_per_sec=3.001, 
+                          elevation_gain_m = 10, 
+                          elevation_loss_m = 8, 
+                          calories = 345, 
+                          average_hr=135, 
+                          max_hr=142, 
+                          aerobic_training_effect=3.2,
+                          anaerobic_training_effect=1.0,
+                          training_stress_score=35.7,
+                          intensity_factor=0.605,
+                          average_running_cadence_steps_per_min=171,
+                          max_running_cadence_steps_per_min=178,
+                         )  
+        sportstype=SportsType(name="Trail Running")
+        sportstype.add(workout, self)
+        workout.sportstype_id = sportstype.id
+        workout.sport_id = sportstype.sport_id
+        workout.add(self)
+
+        workout = Workout(external_id=3,
+                          source = "Sample",
+                          name="Pool", 
+                          description="short intervals", 
+                          min_temperature = 18, 
+                          max_temperature=22, 
+                          start_time=datetime.datetime.strptime("2020-05-02 12:00:00", "%Y-%m-%d %H:%M:%S"),
+                          duration_sec = 1800, 
+                          moving_duration_sec=1444, 
+                          distance_m = 2000,
+                          average_speed_m_per_sec=0.923, 
+                          max_speed_m_per_sec=0.993, 
+                          average_swim_cadence_strokes_per_min=22,
+                          max_swim_cadence_strokes_per_min=24,
+                          average_swolf=92,
+                          active_lengths=22,
+                          pool_length=5000,
+                          unit_of_pool_length="meter",
+                          pool_length_factor=100,
+                          strokes=549,
+                          avg_stroke_distance=200,
+                          avg_strokes=25.0,
+                         )  
+        sportstype=SportsType(name="Pool Swimming")
+        sportstype.add(workout, self)
+        workout.sportstype_id = sportstype.id
+        workout.sport_id = sportstype.sport_id
+        workout.add(self)
+
+
